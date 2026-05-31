@@ -83,6 +83,8 @@ gh skill preview wyrtensi/paperang-cli paperang-cli
 gh skill install wyrtensi/paperang-cli paperang-cli --agent universal --scope user
 ```
 
+GitHub CLI may note that one hidden skill was excluded. That is expected: `.agents/skills/paperang-cli/` is the synchronized checkout-local copy, while `skills/paperang-cli/` is the public installation source.
+
 GitHub CLI supports host-specific installation for many editors and coding agents. Replace `universal` with a value such as `codex`, `claude-code`, `github-copilot`, `cursor`, `antigravity`, `gemini-cli`, `windsurf`, or another value listed by `gh skill install --help`.
 
 Skills installed through GitHub CLI include source metadata, so they can be checked and updated later:
