@@ -14,6 +14,8 @@ Version `0.1.0` supports:
 
 Local, cable, and USB data transports are not supported for Paperang P1 in this package.
 
+Real printer communication and physical printing have been tested only on Windows. CI runs compatibility checks on Linux and macOS, but those checks do not prove BLE or printer behavior on those platforms.
+
 ## Features
 
 - Discover nearby Paperang printers over BLE

@@ -65,3 +65,5 @@ If an agent is operating without explicit user approval for paper use, it should
 If a longer-lived Python process reuses the transport object after disconnect, the transport now attempts one reconnect before failing the next query.
 
 For `paperang_p1`, local/cable mode is not available in this project. Live communication currently uses Bluetooth only.
+
+Real BLE communication and physical printing have been tested only on Windows. Linux and macOS CI runs are compatibility checks, not hardware-validation evidence.

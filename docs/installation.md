@@ -6,6 +6,8 @@
 
 The existing repository has already been exercised on Windows with Python `3.14.2`, so that is the current practical reference environment.
 
+Real BLE communication and physical printing have been tested only on Windows. Linux and macOS CI checks validate package compatibility and unit tests, not live printer behavior.
+
 ## Core Dependencies
 
 The standalone package depends on:

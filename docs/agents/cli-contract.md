@@ -68,6 +68,8 @@ For `paperang_p1`:
 - live printer communication uses Bluetooth Low Energy (BLE)
 - local, cable, and USB data transports are not supported by this project
 - agents must not attempt or document a cable, USB, or local fallback
+- real BLE communication and physical printing have been tested only on Windows
+- Linux and macOS CI checks do not prove live hardware compatibility
 
 Do not assume that additional models or transports exist merely because the implementation has extension points.
 

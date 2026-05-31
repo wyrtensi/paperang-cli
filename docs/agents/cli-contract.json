@@ -27,7 +27,14 @@
         "cable",
         "usb"
       ],
-      "notes": "For paperang_p1, live printer communication uses BLE only. Do not attempt or document a local, cable, or USB fallback."
+      "hardware_tested_platforms": [
+        "windows"
+      ],
+      "compatibility_checks_without_hardware_validation": [
+        "linux",
+        "macos"
+      ],
+      "notes": "For paperang_p1, live printer communication uses BLE only. Do not attempt or document a local, cable, or USB fallback. Real BLE communication and physical printing have been tested only on Windows."
     }
   ],
   "config_resolution": [

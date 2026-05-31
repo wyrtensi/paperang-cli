@@ -89,11 +89,13 @@ git push -u origin main
 
 `.github/workflows/ci.yml` runs:
 
-- tests on Linux, macOS, and Windows
+- compatibility tests on Linux, macOS, and Windows
 - Python `3.10`, `3.12`, and `3.14`
 - wheel and sdist builds
 - `twine check`
 - wheel-content verification
+
+Real BLE communication and physical printing have been tested only on Windows. CI on Linux and macOS does not change that hardware-support statement.
 
 ### PyPI Publish
 
