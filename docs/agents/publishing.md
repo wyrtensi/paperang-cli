@@ -121,6 +121,8 @@ gh skill update paperang-cli --dry-run
 
 Do not create a separate Agent Skill release from this repository. Application release tags snapshot the matching skill automatically, so Python, npm, and Agent Skill versions remain aligned.
 
+Recommended manual hardening after the release flow is proven: add an active repository ruleset that prevents updates and deletion of release tags such as `v*` and `npm-v*` without blocking tag creation. `gh skill publish skills --dry-run` reports a warning until tag protection exists.
+
 ### PyPI Publish
 
 `.github/workflows/pypi-publish.yml` runs on:
