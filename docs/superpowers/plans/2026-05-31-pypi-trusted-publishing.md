@@ -63,12 +63,12 @@
 **Files:**
 - Verify: all tracked files
 
-- [ ] Initialize git with branch `main`.
-- [ ] Confirm ignored files are not staged.
-- [ ] Configure local commit identity as `wyrtensi`.
-- [ ] Create the initial commit.
-- [ ] Push to `git@github.com:wyrtensi/paperang-cli.git`.
-- [ ] Create the GitHub environment `pypi`.
+- [x] Initialize git with branch `main`.
+- [x] Confirm ignored files are not staged.
+- [x] Configure local commit identity as `wyrtensi`.
+- [x] Create the initial commit.
+- [x] Push to `git@github.com:wyrtensi/paperang-cli.git`.
+- [x] Create the GitHub environment `pypi`.
 
 ### Task 6: Hand Off Manual Registry Step
 
