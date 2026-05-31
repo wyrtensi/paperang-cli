@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.1.0",
+  "package_version": "0.1.5",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
@@ -90,11 +90,15 @@
   "safety_policy": {
     "explicit_user_request_required_for_paper_use": true,
     "successful_matching_dry_run_required_before_real_print": true,
-    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, and feed options as the intended real print.",
+    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
     "report_dry_run_and_request_real_print_approval": true,
     "safety_error_behavior": "Stop and report SAFETY_ERROR. Do not automatically add an allow flag or retry without explicit user approval.",
     "optional_parameters_do_not_bypass_safety": [
       "--font-size",
+      "--font-family",
+      "--min-font-size",
+      "--autofit",
+      "--orientation",
       "--feed-mm",
       "--layout",
       "--mode",
@@ -129,6 +133,8 @@
       "print.text": {
         "validates": [
           "text rendering",
+          "selected font family",
+          "selected orientation",
           "bitstream preparation",
           "font size",
           "feed calculation"
@@ -142,6 +148,8 @@
       "print.paragraph": {
         "validates": [
           "wrapped rendering",
+          "selected font family",
+          "selected orientation",
           "bitstream preparation",
           "font size",
           "feed calculation"
@@ -156,6 +164,7 @@
         "validates": [
           "local image loading",
           "selected conversion",
+          "selected orientation",
           "bitstream preparation",
           "feed calculation"
         ],
@@ -372,10 +381,134 @@
       "warning": {
         "type": "string",
         "nullable": true
+      },
+      "styling": {
+        "type": "object",
+        "nullable": true
+      }
+    },
+    "api_catalog_entry": {
+      "api": {
+        "type": "string",
+        "nullable": false
+      },
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "available": {
+        "type": "bool",
+        "nullable": false
+      },
+      "status": {
+        "type": "string",
+        "nullable": false
+      },
+      "class_name": {
+        "type": "string",
+        "nullable": true
+      },
+      "planned_class_name": {
+        "type": "string",
+        "nullable": true
+      }
+    },
+    "api_contract": {
+      "api": {
+        "type": "string",
+        "nullable": false
+      },
+      "availability": {
+        "type": "object",
+        "nullable": false
+      },
+      "class_name": {
+        "type": "string",
+        "nullable": true
+      },
+      "planned_class_name": {
+        "type": "string",
+        "nullable": true
+      },
+      "import_path": {
+        "type": "string",
+        "nullable": true
+      },
+      "implementation_module": {
+        "type": "string",
+        "nullable": true
+      },
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "transport": {
+        "type": "string",
+        "nullable": true
+      },
+      "config_loading": {
+        "type": "object",
+        "nullable": false
+      },
+      "constructor_options": {
+        "type": "object[]",
+        "nullable": false
+      },
+      "methods": {
+        "type": "object[]",
+        "nullable": false
+      },
+      "styling_support": {
+        "type": "object",
+        "nullable": false
+      },
+      "safety": {
+        "type": "object",
+        "nullable": false
+      },
+      "unsupported_parity_gaps": {
+        "type": "string[]",
+        "nullable": false
       }
     }
   },
   "commands": {
+    "api.list": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": false,
+      "arguments": [],
+      "options": [],
+      "result_schema": "api_catalog_entry[]",
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    },
+    "api.p1": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": false,
+      "arguments": [],
+      "options": [],
+      "result_schema": "api_contract",
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    },
+    "api.p2": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": false,
+      "arguments": [],
+      "options": [],
+      "result_schema": "api_contract",
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    },
     "discover": {
       "stability": "stable",
       "paper_consuming": false,
@@ -490,6 +623,41 @@
           "required": false
         },
         {
+          "name": "--font-family",
+          "type": "choice",
+          "values": [
+            "sans",
+            "mono",
+            "serif"
+          ],
+          "required": false
+        },
+        {
+          "name": "--min-font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--autofit",
+          "type": "flag",
+          "required": false
+        },
+        {
+          "name": "--no-autofit",
+          "type": "flag",
+          "required": false
+        },
+        {
+          "name": "--orientation",
+          "type": "choice",
+          "values": [
+            "normal",
+            "rotate-90-cw",
+            "rotate-90-ccw"
+          ],
+          "required": false
+        },
+        {
           "name": "--feed-mm",
           "type": "float",
           "required": false
@@ -537,6 +705,41 @@
           "required": false
         },
         {
+          "name": "--font-family",
+          "type": "choice",
+          "values": [
+            "sans",
+            "mono",
+            "serif"
+          ],
+          "required": false
+        },
+        {
+          "name": "--min-font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--autofit",
+          "type": "flag",
+          "required": false
+        },
+        {
+          "name": "--no-autofit",
+          "type": "flag",
+          "required": false
+        },
+        {
+          "name": "--orientation",
+          "type": "choice",
+          "values": [
+            "normal",
+            "rotate-90-cw",
+            "rotate-90-ccw"
+          ],
+          "required": false
+        },
+        {
           "name": "--feed-mm",
           "type": "float",
           "required": false
@@ -580,6 +783,16 @@
           "required": false
         },
         {
+          "name": "--orientation",
+          "type": "choice",
+          "values": [
+            "normal",
+            "rotate-90-cw",
+            "rotate-90-ccw"
+          ],
+          "required": false
+        },
+        {
           "name": "--feed-mm",
           "type": "float",
           "required": false
@@ -591,7 +804,6 @@
             "sticker",
             "photo"
           ],
-          "default": "sticker",
           "required": false,
           "description": "High-level preset. Use sticker for high-contrast graphics and photo for photographs or smoother grayscale content."
         },
@@ -667,7 +879,6 @@
             "text-above",
             "image-above"
           ],
-          "default": "text-above",
           "required": false
         },
         {
@@ -677,7 +888,6 @@
             "sticker",
             "photo"
           ],
-          "default": "sticker",
           "required": false,
           "description": "High-level preset for the image part."
         },
@@ -808,6 +1018,13 @@
   },
   "exit_code_scope": "exit_codes documents project-domain errors. Click-level usage validation may also return exit code 2.",
   "recommended_agent_workflows": {
+    "library_api": [
+      "paperang --json api list",
+      "select the relevant model entry such as paperang --json api p1",
+      "if a model such as p2 is marked coming-soon, stop and report that it is unavailable",
+      "read the supported constructor options, methods, and safety requirements for the selected model",
+      "do not assume parity with paperang-p2-lib features that are not listed there"
+    ],
     "readiness_unknown_device": [
       "paperang --json config show",
       "paperang --json discover",

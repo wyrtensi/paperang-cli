@@ -70,6 +70,13 @@ class FakeDriver:
             bytes_sent=1024,
             paragraph=kwargs["paragraph"],
             battery_after=87,
+            styling={
+                "orientation": kwargs.get("orientation") or "normal",
+                "font_family": kwargs.get("font_family"),
+                "font_size": kwargs.get("font_size") or 36,
+                "autofit": kwargs.get("autofit"),
+                "autofit_applied": False,
+            },
         )
 
     def print_image(self, image_path, **kwargs):
@@ -86,6 +93,11 @@ class FakeDriver:
             conversion=kwargs["conversion"],
             battery_after=87,
             warning="Image printing is more experimental than text printing; conversion quality and physical output still need manual validation on real hardware.",
+            styling={
+                "orientation": kwargs.get("orientation") or "normal",
+                "mode": kwargs.get("mode"),
+                "conversion": kwargs.get("conversion"),
+            },
         )
 
     def print_compose(self, text, image_path, **kwargs):
@@ -104,6 +116,12 @@ class FakeDriver:
             layout=kwargs["layout"],
             battery_after=87,
             warning="Combined text-and-image printing uses the same image conversion path as image printing; validate physical output on real hardware before relying on the layout.",
+            styling={
+                "layout": kwargs.get("layout"),
+                "font_size": kwargs.get("font_size") or 28,
+                "mode": kwargs.get("mode"),
+                "conversion": kwargs.get("conversion"),
+            },
         )
 
     def self_test(self, **kwargs):

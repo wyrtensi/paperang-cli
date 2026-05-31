@@ -13,6 +13,7 @@ def test_cli_help():
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
+    assert "api" in result.output
     assert "battery" in result.output
     assert "mac" in result.output
     assert "probe" in result.output
@@ -86,6 +87,37 @@ def test_print_text_dry_run_json(monkeypatch, fake_driver):
     assert '"feed_units": 280' in result.output
 
 
+def test_print_text_dry_run_forwards_styling_overrides(monkeypatch, fake_driver):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "text",
+            "label text",
+            "--dry-run",
+            "--font-family",
+            "mono",
+            "--autofit",
+            "--min-font-size",
+            "18",
+            "--orientation",
+            "rotate-90-cw",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert '"orientation": "rotate-90-cw"' in result.output
+    assert fake_driver.calls[-1][0] == "print_text"
+    assert fake_driver.calls[-1][1]["font_family"] == "mono"
+    assert fake_driver.calls[-1][1]["autofit"] is True
+    assert fake_driver.calls[-1][1]["min_font_size"] == 18
+    assert fake_driver.calls[-1][1]["orientation"] == "rotate-90-cw"
+
+
 def test_print_image_dry_run_json(monkeypatch, fake_driver, tmp_path):
     runner = CliRunner()
     monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
@@ -99,6 +131,31 @@ def test_print_image_dry_run_json(monkeypatch, fake_driver, tmp_path):
     assert '"source_path":' in result.output
 
 
+def test_print_image_dry_run_forwards_orientation(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    image_path = tmp_path / "sample-rotate.png"
+    Image.new("RGB", (16, 16), "black").save(image_path)
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "image",
+            str(image_path),
+            "--dry-run",
+            "--orientation",
+            "rotate-90-ccw",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert '"orientation": "rotate-90-ccw"' in result.output
+    assert fake_driver.calls[-1][0] == "print_image"
+    assert fake_driver.calls[-1][1]["orientation"] == "rotate-90-ccw"
+
+
 def test_print_image_photo_mode_resolves_to_dither(monkeypatch, fake_driver, tmp_path):
     runner = CliRunner()
     monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
@@ -110,6 +167,7 @@ def test_print_image_photo_mode_resolves_to_dither(monkeypatch, fake_driver, tmp
     assert result.exit_code == 0
     assert '"conversion": "dither"' in result.output
     assert fake_driver.calls[-1][1]["conversion"] == "dither"
+    assert fake_driver.calls[-1][1]["mode"] == "photo"
 
 
 def test_print_compose_dry_run_json(monkeypatch, fake_driver, tmp_path):
@@ -140,6 +198,7 @@ def test_print_compose_dry_run_json(monkeypatch, fake_driver, tmp_path):
     assert '"conversion": "dither"' in result.output
     assert fake_driver.calls[-1][0] == "print_compose"
     assert fake_driver.calls[-1][1]["layout"] == "image-above"
+    assert fake_driver.calls[-1][1]["mode"] == "photo"
 
 
 def test_self_test_dry_run_json(monkeypatch, fake_driver):
@@ -161,3 +220,63 @@ def test_config_show_json():
     assert result.exit_code == 0
     assert '"config_exists": false' in result.output
     assert '"supported_models": [' in result.output
+
+
+def test_api_p1_json():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["--json", "api", "p1"])
+
+    assert result.exit_code == 0
+    assert '"class_name": "PaperangP1"' in result.output
+    assert '"styling_support": {' in result.output
+    assert '"rotated_compose_supported": false' in result.output
+    assert '"allow_paper_use_methods": [' in result.output
+    assert '"unsupported_parity_gaps": [' in result.output
+
+
+def test_api_p1_human_output():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["api", "p1"])
+
+    assert result.exit_code == 0
+    assert "API: PaperangP1" in result.output
+    assert "Status: available" in result.output
+    assert "Styling support:" in result.output
+    assert "Rotated compose supported: False" in result.output
+    assert "allow_paper_use required for" in result.output
+    assert "Unsupported parity gaps:" in result.output
+
+
+def test_api_list_json():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["--json", "api", "list"])
+
+    assert result.exit_code == 0
+    assert '"api": "p1"' in result.output
+    assert '"api": "p2"' in result.output
+    assert '"status": "coming-soon"' in result.output
+
+
+def test_api_p2_json_marks_unavailable():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["--json", "api", "p2"])
+
+    assert result.exit_code == 0
+    assert '"available": false' in result.output
+    assert '"status": "coming-soon"' in result.output
+    assert '"planned_class_name": "PaperangP2"' in result.output
+
+
+def test_api_p2_human_output_marks_unavailable():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["api", "p2"])
+
+    assert result.exit_code == 0
+    assert "API: PaperangP2" in result.output
+    assert "Status: coming-soon" in result.output
+    assert "Import: unavailable in this package version" in result.output

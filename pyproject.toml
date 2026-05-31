@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperang-cli"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Standalone CLI for Paperang thermal printers"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -66,3 +66,9 @@ addopts = "-q"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+paperang_cli = ["version-manifest.json"]
+
+[tool.setuptools.dynamic]
+version = {attr = "paperang_cli._version.__version__"}

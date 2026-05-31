@@ -9,12 +9,11 @@ from paperang_cli.errors import DriverError, PrinterNotFoundError, SafetyError
 from paperang_cli.models import BatteryStatus, BluetoothMacStatus, PrintResult, PrinterDevice, PrinterStatus
 from paperang_cli.render import (
     DEFAULT_COMPOSE_FONT_SIZE,
-    DEFAULT_PARAGRAPH_FONT_SIZE,
-    DEFAULT_TEXT_FONT_SIZE,
     feed_units_from_mm,
     render_composed_bitstream,
-    render_image_bitstream,
-    render_text_bitstream,
+    render_image_job,
+    render_text_job,
+    resolve_image_conversion,
 )
 
 SELF_TEST_WARNING = "The built-in self-test consumes substantially more paper than normal text or image prints."
@@ -116,6 +115,13 @@ class PaperangP1Driver(PrinterDriver):
         *,
         paragraph: bool,
         font_size: int | None,
+        font_family: str | None,
+        min_font_size: int | None,
+        autofit: bool | None,
+        orientation: str | None,
+        horizontal_padding_px: int | None,
+        vertical_padding_px: int | None,
+        line_spacing_px: int | None,
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
@@ -127,31 +133,42 @@ class PaperangP1Driver(PrinterDriver):
         self._require_paper_use(allow_paper_use=allow_paper_use, dry_run=dry_run)
 
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
-        resolved_font_size = font_size
-        if resolved_font_size is None:
-            resolved_font_size = DEFAULT_PARAGRAPH_FONT_SIZE if paragraph else DEFAULT_TEXT_FONT_SIZE
-
-        bitstream = render_text_bitstream(
+        style_defaults = self.settings.print_defaults.paragraph if paragraph else self.settings.print_defaults.text
+        rendered = render_text_job(
             text,
             printer_width=self.settings.printerwidth,
             paragraph=paragraph,
-            font_size=resolved_font_size,
+            font_size=font_size if font_size is not None else style_defaults.font_size,
+            font_family=font_family or style_defaults.font_family,
+            min_font_size=min_font_size if min_font_size is not None else style_defaults.min_font_size,
+            autofit=autofit if autofit is not None else style_defaults.autofit,
+            orientation=orientation or style_defaults.orientation,
+            horizontal_padding_px=(
+                horizontal_padding_px if horizontal_padding_px is not None else style_defaults.horizontal_padding_px
+            ),
+            vertical_padding_px=(
+                vertical_padding_px if vertical_padding_px is not None else style_defaults.vertical_padding_px
+            ),
+            line_spacing_px=line_spacing_px if line_spacing_px is not None else style_defaults.line_spacing_px,
         )
         return self._send_bitstream_job(
-            bitstream=bitstream,
+            bitstream=rendered.bitstream,
             operation="paragraph" if paragraph else "text",
             paragraph=paragraph,
-            font_size=resolved_font_size,
+            font_size=rendered.styling.font_size,
             feed_mm=resolved_feed_mm,
             dry_run=dry_run,
             address=address,
+            styling=rendered.styling.to_dict(),
         )
 
     def print_image(
         self,
         image_path: Path,
         *,
-        conversion: str,
+        mode: str | None,
+        conversion: str | None,
+        orientation: str | None,
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
@@ -159,20 +176,29 @@ class PaperangP1Driver(PrinterDriver):
     ) -> PrintResult:
         self._require_paper_use(allow_paper_use=allow_paper_use, dry_run=dry_run)
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
-        bitstream = render_image_bitstream(
+        image_defaults = self.settings.print_defaults.image
+        resolved_mode = mode or image_defaults.mode
+        resolved_conversion = resolve_image_conversion(
+            mode=resolved_mode,
+            conversion=conversion or image_defaults.conversion,
+        )
+        rendered = render_image_job(
             image_path,
             printer_width=self.settings.printerwidth,
-            conversion=conversion,
+            conversion=resolved_conversion,
+            orientation=orientation or image_defaults.orientation,
+            mode=resolved_mode,
         )
         return self._send_bitstream_job(
-            bitstream=bitstream,
+            bitstream=rendered.bitstream,
             operation="image",
             feed_mm=resolved_feed_mm,
             dry_run=dry_run,
             address=address,
             source_path=str(image_path),
-            conversion=conversion,
+            conversion=resolved_conversion,
             warning=IMAGE_PRINT_WARNING,
+            styling=rendered.styling.to_dict(),
         )
 
     def print_compose(
@@ -180,9 +206,10 @@ class PaperangP1Driver(PrinterDriver):
         text: str,
         image_path: Path,
         *,
-        layout: str,
+        layout: str | None,
         font_size: int | None,
-        conversion: str,
+        mode: str | None,
+        conversion: str | None,
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
@@ -193,14 +220,26 @@ class PaperangP1Driver(PrinterDriver):
 
         self._require_paper_use(allow_paper_use=allow_paper_use, dry_run=dry_run)
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
-        resolved_font_size = font_size or DEFAULT_COMPOSE_FONT_SIZE
+        compose_defaults = self.settings.print_defaults.compose
+        resolved_layout = layout or compose_defaults.layout
+        resolved_font_size = font_size if font_size is not None else (compose_defaults.font_size or DEFAULT_COMPOSE_FONT_SIZE)
+        resolved_mode = mode or compose_defaults.image_mode
+        resolved_conversion = resolve_image_conversion(
+            mode=resolved_mode,
+            conversion=conversion or compose_defaults.image_conversion,
+        )
         bitstream = render_composed_bitstream(
             text,
             image_path,
             printer_width=self.settings.printerwidth,
             font_size=resolved_font_size,
-            conversion=conversion,
-            layout=layout,
+            font_family=compose_defaults.font_family,
+            horizontal_padding_px=compose_defaults.horizontal_padding_px,
+            vertical_padding_px=compose_defaults.vertical_padding_px,
+            line_spacing_px=compose_defaults.line_spacing_px,
+            spacer_height_px=compose_defaults.spacer_height_px,
+            conversion=resolved_conversion,
+            layout=resolved_layout,
         )
         return self._send_bitstream_job(
             bitstream=bitstream,
@@ -210,9 +249,20 @@ class PaperangP1Driver(PrinterDriver):
             address=address,
             font_size=resolved_font_size,
             source_path=str(image_path),
-            conversion=conversion,
-            layout=layout,
+            conversion=resolved_conversion,
+            layout=resolved_layout,
             warning=COMPOSE_PRINT_WARNING,
+            styling={
+                "layout": resolved_layout,
+                "font_family": compose_defaults.font_family,
+                "font_size": resolved_font_size,
+                "horizontal_padding_px": compose_defaults.horizontal_padding_px,
+                "vertical_padding_px": compose_defaults.vertical_padding_px,
+                "line_spacing_px": compose_defaults.line_spacing_px,
+                "spacer_height_px": compose_defaults.spacer_height_px,
+                "mode": resolved_mode,
+                "conversion": resolved_conversion,
+            },
         )
 
     def self_test(
@@ -283,6 +333,7 @@ class PaperangP1Driver(PrinterDriver):
         conversion: str | None = None,
         layout: str | None = None,
         warning: str | None = None,
+        styling: dict | None = None,
     ) -> PrintResult:
         feed_units = feed_units_from_mm(feed_mm)
 
@@ -301,6 +352,7 @@ class PaperangP1Driver(PrinterDriver):
                 conversion=conversion,
                 layout=layout,
                 warning=warning,
+                styling=styling,
             )
 
         printer = self._build_printer(address)
@@ -326,6 +378,7 @@ class PaperangP1Driver(PrinterDriver):
                 layout=layout,
                 battery_after=battery_after,
                 warning=warning,
+                styling=styling,
             )
         finally:
             printer.disconnect()

@@ -37,15 +37,16 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           from pathlib import Path
+          import importlib.util
+          import json
           import os
-          import re
-          import tomllib
 
-          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          package_version = project["project"]["version"]
-          init_text = Path("src/paperang_cli/__init__.py").read_text(encoding="utf-8")
-          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
-          assert package_version == init_version, (package_version, init_version)
+          package_version = json.loads(Path("src/paperang_cli/version-manifest.json").read_text(encoding="utf-8"))["version"]
+          spec = importlib.util.spec_from_file_location("paperang_cli_version", Path("src/paperang_cli/_version.py"))
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+          assert package_version == module.__version__, (package_version, module.__version__)
 
           release_tag = os.environ.get("RELEASE_TAG", "")
           if release_tag:

@@ -14,6 +14,22 @@ The new package needs:
 
 ## High-Level Layers
 
+### Public Library API Layer
+
+Files:
+
+- `src/paperang_cli/api/__init__.py`
+- `src/paperang_cli/api/p1.py`
+- `src/paperang_cli/api/contract.py`
+
+Responsibilities:
+
+- expose the synchronous `PaperangP1` facade for library consumers
+- present a P1-only surface that is easier to script from Python
+- keep library-style ergonomics close to `paperang-p2-lib` where P1 features overlap
+- reuse the existing driver, render, and safety paths instead of creating a second print implementation
+- keep future model facades additive, so `p2.py` or `p3.py` can live beside `p1.py` instead of overloading a single global `api.py`
+
 ### CLI Layer
 
 Files:
@@ -27,6 +43,7 @@ Responsibilities:
 - global options
 - JSON vs human output
 - safe command semantics
+- read-only inspection of the supported Python API contract
 
 ### Service and Utility Layer
 

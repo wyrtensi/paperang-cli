@@ -53,7 +53,7 @@ python -m paperang_cli --help
 - Keep Bluetooth enabled.
 - Ensure the printer is powered on before `status` or `discover`.
 - If Windows has Bluetooth pairing problems, the root repository docs may still be useful because the BLE stack is the same family of behavior.
-- `paperang-cli` does not automate pairing in `v0.1.0`.
+- `paperang-cli` does not automate pairing in the current release.
 
 ## First Safe Commands
 
@@ -78,4 +78,4 @@ If `paperang` conflicts with another executable on the machine, use `paperang-cl
 
 ## Current Caveat About Images
 
-Image printing is available in `v0.1.0`, but it should still be treated as experimental until you confirm real output quality on hardware. The original project had more than one image-conversion path, which suggests that different classes of images may need different tuning.
+Image printing is available in the current release, but it should still be treated as experimental until you confirm real output quality on hardware. The original project had more than one image-conversion path, which suggests that different classes of images may need different tuning.

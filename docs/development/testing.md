@@ -7,6 +7,7 @@ The test suite should validate most logic without requiring a live printer.
 That means the default tests focus on:
 
 - config resolution
+- Python API delegation
 - driver registry behavior
 - render-only logic
 - CLI parsing and output shape
@@ -17,10 +18,11 @@ That means the default tests focus on:
 - config loading with defaults
 - config error paths
 - writing example config
+- `PaperangP1` facade construction and driver delegation
 - model registry resolution
 - feed calibration
 - render-only bitstream generation
-- CLI `discover`, `status`, and `print` via mocked drivers
+- CLI `discover`, `status`, `api p1`, and `print` via mocked drivers
 
 ## What Is Not In Automated Tests
 
@@ -36,8 +38,14 @@ These checks remain manual hardware smoke tests:
 From `paperang-cli/`:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,release]"
 python -m pytest
+```
+
+Focused library/API checks:
+
+```powershell
+python -m pytest tests/test_api.py tests/test_cli.py tests/test_config.py
 ```
 
 Validate the distributable Agent Skill and its synchronized repository-local copy:
@@ -47,15 +55,29 @@ python scripts/check-agent-skill.py
 gh skill publish skills --dry-run
 ```
 
+Validate the npm wrapper and release artifacts when changing versioning, packaging, or public distribution behavior:
+
+```powershell
+Set-Location npm
+npm test
+Set-Location ..
+python -m build
+python -m twine check dist/*
+```
+
 ## Recommended Manual Smoke Sequence
 
-After changing BLE or driver behavior:
+After changing BLE, driver behavior, or live print rendering, prefer this sequence:
 
-1. `paperang-cli --json status`
-2. `paperang-cli --json discover`
-3. `paperang-cli print text "test print" --dry-run --json`
-4. `paperang-cli --json print image ".\\sample.png" --dry-run`
-5. only then a real print with `--allow-paper-use`
+1. `paperang --json discover`
+2. `paperang --json probe --address "04:7F:0E:3A:4F:31"`
+3. `paperang --json battery --address "04:7F:0E:3A:4F:31"`
+4. `paperang --json print text "rotated smoke" --dry-run --address "04:7F:0E:3A:4F:31" --orientation rotate-90-cw --font-family mono --autofit`
+5. `paperang --json print image "docs\\assets\\compose-sample.pbm" --dry-run --address "04:7F:0E:3A:4F:31" --orientation rotate-90-cw --mode sticker`
+6. `paperang --json print compose "compose smoke" "docs\\assets\\compose-sample.pbm" --dry-run --address "04:7F:0E:3A:4F:31" --mode sticker`
+7. only then a real print with `--allow-paper-use`
+
+If discovery is flaky on Windows, a known saved MAC address is still a valid smoke-test path for direct BLE connect.
 
 ## Why Dry-Run Matters
 
@@ -66,6 +88,9 @@ For agent-friendly workflows, `--dry-run` lets you validate:
 - config resolution
 - parameter parsing
 - font sizing
+- generic font-family selection
+- rotated orientation handling
+- rotated-label autofit behavior
 - wrapping behavior
 - feed calculations
 - JSON result structure

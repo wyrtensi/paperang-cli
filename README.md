@@ -7,19 +7,24 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Hardware tested on Windows](https://img.shields.io/badge/hardware_tested-Windows-0078D6?logo=windows11&logoColor=white)
 
-`paperang-cli` is a standalone command-line tool for working with Paperang thermal printers from Python.
+`paperang-cli` is a standalone command-line tool and Python package for working with Paperang thermal printers.
 
-It provides a small, script-friendly interface for discovering a printer, checking its status, and printing text or images with explicit safety gates. JSON output is available for automation and agent-driven workflows.
+It provides a small, script-friendly CLI for discovering a printer, checking its status, and printing text or images with explicit safety gates. JSON output is available for automation and agent-driven workflows.
+
+The package also exposes a model-aware Python API surface. Today that means a supported `PaperangP1` facade plus a read-only API catalog that can mark future models such as `p2` as coming soon without pretending they already work.
 
 ## Current Support
 
-Version `0.1.0` supports:
+The current release ships one supported model and one planned placeholder:
 
 | Printer | Transport | Status |
 | --- | --- | --- |
 | Paperang P1 | Bluetooth Low Energy (BLE) | Supported |
+| Paperang P2 | Local + Bluetooth Low Energy (BLE) | Coming soon, not available yet |
 
 Local, cable, and USB data transports are not supported for Paperang P1 in this package.
+
+The `Paperang P2` row is a roadmap placeholder only. No P2 driver, CLI command set, or public Python facade is available in this package version yet.
 
 Real printer communication and physical printing have been tested only on Windows. CI runs compatibility checks on Linux and macOS, but those checks do not prove BLE or printer behavior on those platforms.
 
@@ -29,10 +34,13 @@ Real printer communication and physical printing have been tested only on Window
 - Check battery level, Bluetooth MAC address, and live printer status
 - Print short text or wrapped paragraphs
 - Print local images with sticker and photo conversion presets
+- Configure default print styling through JSON config, including font family and 90-degree text or image orientation
 - Compose text and an image into one print job
 - Preview every print path with `--dry-run`
 - Emit machine-readable JSON with `--json`
 - Use explicit allow flags before any paper-consuming operation
+- Use the `PaperangP1` Python facade for library-style P1 automation
+- Inspect model-specific API availability with `paperang api list`
 
 Image and composed printing are available, but remain experimental until you validate physical output on your printer.
 
@@ -148,7 +156,30 @@ After checking the result, explicitly allow paper use:
 paperang --json print text "Hello from Paperang" --allow-paper-use
 ```
 
-Keep the content, image, layout, conversion mode, font size, and feed options the same between dry-run and the real print.
+Keep the content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options the same between dry-run and the real print.
+
+## Python API
+
+`paperang-cli` also ships a model-aware Python API layer. Right now the only implemented public facade is `PaperangP1`, while `p2` is intentionally exposed only as a `coming-soon` placeholder in the read-only API catalog.
+
+```python
+from paperang_cli import PaperangP1
+
+printer = PaperangP1(address="04:7F:0E:3A:4F:31")
+printer.connect()
+status = printer.get_status()
+preview = printer.print_text("Hello from Paperang", dry_run=True)
+```
+
+See [Paperang P1 Python API](docs/usage/p1-api.md) for constructor options, supported methods, safety semantics, and parity notes versus `paperang-p2-lib`.
+
+Use the installed CLI to inspect what is actually available in the current package version:
+
+```powershell
+paperang --json api list
+paperang --json api p1
+paperang --json api p2
+```
 
 ## Printing
 
@@ -157,6 +188,12 @@ Keep the content, image, layout, conversion mode, font size, and feed options th
 ```powershell
 paperang --json print text "Shipping label" --dry-run
 paperang --json print text "Shipping label" --allow-paper-use
+```
+
+Use rotated label rendering when you want text to run along the paper path:
+
+```powershell
+paperang --json print text "Long shipping label" --dry-run --orientation rotate-90-cw --font-family mono --autofit
 ```
 
 ### Paragraph
@@ -181,6 +218,12 @@ Use `--mode photo` as a starting point for photographs and smoother grayscale co
 paperang --json print image ".\photo.jpg" --dry-run --mode photo
 ```
 
+You can also rotate an image 90 degrees before it is fit to the P1 width:
+
+```powershell
+paperang --json print image ".\label.png" --dry-run --orientation rotate-90-ccw
+```
+
 Image quality depends on the source file and printer. A successful dry-run validates conversion and packaging, not the final paper output.
 
 ### Compose
@@ -200,6 +243,8 @@ paperang --json print compose "Product label" ".\sample.png" --dry-run --layout 
 
 Compose printing uses the same experimental image conversion pipeline as `print image`.
 
+Rotated compose printing is not implemented yet. `print compose` still uses the ordinary vertical layout path in the current release.
+
 ### Built-In Self-Test
 
 The printer self-test consumes substantially more paper than an ordinary print. Use it only when you explicitly want the printer's built-in diagnostic page:
@@ -216,6 +261,9 @@ The self-test dry-run only validates the CLI path and warning payload. It does n
 | Command | Purpose |
 | --- | --- |
 | `paperang discover` | Scan for nearby supported printers |
+| `paperang api list` | List known model-specific Python API entries and their availability |
+| `paperang api p1` | Show the supported `PaperangP1` Python API contract |
+| `paperang api p2` | Show the `coming-soon` placeholder contract for a future P2 API |
 | `paperang battery` | Query the current battery percentage |
 | `paperang mac` | Query the printer-reported Bluetooth MAC address |
 | `paperang status` | Query live printer information |
@@ -264,6 +312,7 @@ See [Configuration](docs/usage/configuration.md) for the full schema.
 - [Documentation index](docs/index.md)
 - [Installation guide](docs/installation.md)
 - [Command reference](docs/usage/commands.md)
+- [Paperang P1 Python API](docs/usage/p1-api.md)
 - [Configuration](docs/usage/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Agent contract](docs/agents/cli-contract.md)

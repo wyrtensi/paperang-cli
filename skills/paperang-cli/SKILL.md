@@ -26,7 +26,7 @@ Treat these rules as hard requirements:
 1. Prefer `--json` for agent-driven commands.
 2. Use non-printing commands first: `config show`, `discover`, `probe`, `status`, `battery`, and `mac`.
 3. Run a successful matching `print ... --dry-run` before every real print.
-4. Keep content, image, layout, mode, conversion, font size, and feed options unchanged between dry-run and real print.
+4. Keep content, image, layout, mode, conversion, font size, font family, orientation, autofit intent, and feed options unchanged between dry-run and real print.
 5. Report the dry-run result and ask for explicit approval before consuming paper.
 6. Add `--allow-paper-use` only after approval for `print text`, `print paragraph`, `print image`, or `print compose`.
 7. Add `--allow-large-paper-use` only after specific approval for `print self-test`.
@@ -36,7 +36,9 @@ Treat these rules as hard requirements:
 
 ## Supported Hardware
 
-Version `0.1.0` supports `paperang_p1` over BLE only.
+The current release supports `paperang_p1` over BLE only.
+
+The API catalog may also list planned placeholders such as `p2`, but those are not available in this package version.
 
 - Do not invent or document local, cable, or USB transport fallbacks.
 - Do not assume other models are available because extension points exist.
@@ -59,11 +61,25 @@ For an ordinary text print:
 paperang --json print text "Hello from Paperang" --dry-run
 ```
 
+For a rotated label-style text preview:
+
+```powershell
+paperang --json print text "Long shipping label" --dry-run --orientation rotate-90-cw --font-family mono --autofit
+```
+
+For a rotated image preview:
+
+```powershell
+paperang --json print image ".\sample.png" --dry-run --orientation rotate-90-cw
+```
+
 After reporting the result and receiving explicit approval:
 
 ```powershell
 paperang --json print text "Hello from Paperang" --allow-paper-use
 ```
+
+Rotated compose printing is not implemented yet in the current release. Keep `print compose` in the ordinary vertical layout path.
 
 ## Editing The Repository
 

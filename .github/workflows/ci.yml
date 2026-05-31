@@ -68,14 +68,15 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
-          import tomllib
+          import importlib.util
+          import json
 
-          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          package_version = project["project"]["version"]
-          init_text = Path("src/paperang_cli/__init__.py").read_text(encoding="utf-8")
-          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
-          assert package_version == init_version, (package_version, init_version)
+          package_version = json.loads(Path("src/paperang_cli/version-manifest.json").read_text(encoding="utf-8"))["version"]
+          spec = importlib.util.spec_from_file_location("paperang_cli_version", Path("src/paperang_cli/_version.py"))
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+          assert package_version == module.__version__, (package_version, module.__version__)
 
       - name: Check distribution metadata
         run: python -m twine check dist/*
@@ -94,6 +95,11 @@ jobs:
               assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
               assert "paperang_cli/cli.py" in names
               assert "paperang_cli/config.py" in names
+              assert "paperang_cli/version-manifest.json" in names
+              assert "paperang_cli/api/__init__.py" in names
+              assert "paperang_cli/api/contract.py" in names
+              assert "paperang_cli/api/p1.py" in names
+              assert "paperang_cli/commands/api_cmd.py" in names
 
       - name: Upload distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -127,17 +133,17 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import importlib.util
           import json
-          import re
-          import tomllib
 
-          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          package_version = project["project"]["version"]
-          init_text = Path("src/paperang_cli/__init__.py").read_text(encoding="utf-8")
-          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
+          package_version = json.loads(Path("src/paperang_cli/version-manifest.json").read_text(encoding="utf-8"))["version"]
+          spec = importlib.util.spec_from_file_location("paperang_cli_version", Path("src/paperang_cli/_version.py"))
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
           wrapper = json.loads(Path("npm/package.json").read_text(encoding="utf-8"))
 
-          assert package_version == init_version == wrapper["version"]
+          assert package_version == module.__version__ == wrapper["version"]
           assert wrapper["paperangCli"]["pythonPackageVersion"] == package_version
           assert wrapper["repository"]["url"] == "git+https://github.com/wyrtensi/paperang-cli.git"
 

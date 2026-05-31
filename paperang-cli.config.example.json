@@ -8,5 +8,43 @@
     "MiaoMiaoJi",
     "Paperang",
     "Paperang_P2S"
-  ]
+  ],
+  "print_defaults": {
+    "text": {
+      "font_family": "sans",
+      "font_size": null,
+      "min_font_size": null,
+      "autofit": false,
+      "orientation": "normal",
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null
+    },
+    "paragraph": {
+      "font_family": "sans",
+      "font_size": null,
+      "min_font_size": null,
+      "autofit": false,
+      "orientation": "normal",
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null
+    },
+    "image": {
+      "mode": "sticker",
+      "conversion": null,
+      "orientation": "normal"
+    },
+    "compose": {
+      "font_family": "sans",
+      "font_size": null,
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null,
+      "layout": "text-above",
+      "spacer_height_px": null,
+      "image_mode": "sticker",
+      "image_conversion": null
+    }
+  }
 }

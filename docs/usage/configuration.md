@@ -25,7 +25,45 @@ This is intentional. It keeps installed packages writable without using `site-pa
   "printerwidth": 384,
   "print_density": 75,
   "post_print_feed_mm": 5.0,
-  "discovery_names": ["MiaoMiaoJi", "Paperang", "Paperang_P2S"]
+  "discovery_names": ["MiaoMiaoJi", "Paperang", "Paperang_P2S"],
+  "print_defaults": {
+    "text": {
+      "font_family": "sans",
+      "font_size": null,
+      "min_font_size": null,
+      "autofit": false,
+      "orientation": "normal",
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null
+    },
+    "paragraph": {
+      "font_family": "sans",
+      "font_size": null,
+      "min_font_size": null,
+      "autofit": false,
+      "orientation": "normal",
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null
+    },
+    "image": {
+      "mode": "sticker",
+      "conversion": null,
+      "orientation": "normal"
+    },
+    "compose": {
+      "font_family": "sans",
+      "font_size": null,
+      "horizontal_padding_px": null,
+      "vertical_padding_px": null,
+      "line_spacing_px": null,
+      "layout": "text-above",
+      "spacer_height_px": null,
+      "image_mode": "sticker",
+      "image_conversion": null
+    }
+  }
 }
 ```
 
@@ -35,7 +73,7 @@ This is intentional. It keeps installed packages writable without using `site-pa
 
 Logical printer model identifier used by the driver registry.
 
-In `v0.1.0`, the only valid value is `paperang_p1`.
+In the current release, the only valid value is `paperang_p1`.
 
 ### `macaddress`
 
@@ -61,6 +99,36 @@ Internally, Paperang P1 currently maps this into calibrated printer feed command
 
 BLE device names accepted during discovery.
 
+### `print_defaults`
+
+Optional nested render defaults for P1 print jobs.
+
+Active milestone-1 fields:
+
+- `text.font_family`, `paragraph.font_family`: one of `sans`, `mono`, or `serif`
+- `text.font_size`, `paragraph.font_size`: default text size override
+- `text.min_font_size`, `paragraph.min_font_size`: lower bound for rotated-label autofit
+- `text.autofit`, `paragraph.autofit`: enable shrink-to-fit for rotated text jobs
+- `text.orientation`, `paragraph.orientation`: `normal`, `rotate-90-cw`, or `rotate-90-ccw`
+- `image.mode`, `image.conversion`, `image.orientation`: default image conversion and 90-degree image orientation
+- `compose.font_family`, `compose.font_size`, `compose.horizontal_padding_px`, `compose.vertical_padding_px`, `compose.line_spacing_px`, `compose.layout`, `compose.spacer_height_px`, `compose.image_mode`, `compose.image_conversion`: default ordinary compose settings
+
+Rotated compose rendering and compose autofit are not implemented in the current release, so the config schema does not expose those fields yet.
+
+## Precedence Rules
+
+The effective styling for one print job resolves in this order:
+
+1. explicit CLI flags or `PaperangP1` method arguments
+2. matching values from `print_defaults`
+3. current built-in defaults
+
+Examples:
+
+- `paperang print text ... --font-family mono` overrides `print_defaults.text.font_family`
+- `paperang print image ... --orientation rotate-90-ccw` overrides `print_defaults.image.orientation`
+- if `print compose` is called without `--layout`, it can now inherit `print_defaults.compose.layout`
+
 ## Working Defaults
 
 The default Paperang P1 profile currently reflects the proven working behavior from the root project:
@@ -68,6 +136,26 @@ The default Paperang P1 profile currently reflects the proven working behavior f
 - width `384`
 - density `75`
 - post-print feed `5.0 mm`
+- ordinary text and paragraph orientation `normal`
+- ordinary image mode `sticker`
+
+## Font Families And Rotation
+
+The current release intentionally limits font selection to generic families so configuration stays portable:
+
+- `sans`
+- `mono`
+- `serif`
+
+Those names map to system fonts with platform-specific fallbacks. They are not a promise of pixel-identical output across operating systems.
+
+The current release supports rotated printing for:
+
+- `print text`
+- `print paragraph`
+- `print image`
+
+Rotated `print compose` is not implemented yet.
 
 ## Recommended Workflow
 
@@ -76,6 +164,7 @@ The default Paperang P1 profile currently reflects the proven working behavior f
 3. Replace `macaddress` with your real printer address.
 4. Keep `model` as `paperang_p1` for now.
 5. Only change `post_print_feed_mm` if you want more or less paper exit after text.
+6. Add `print_defaults` only after you have a working dry-run baseline.
 
 ## Why This Is Separate From The Root Config
 

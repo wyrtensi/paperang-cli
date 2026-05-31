@@ -10,6 +10,22 @@ import numba
 import os
 
 
+FONT_CANDIDATES = {
+    "sans": {
+        "windows": ["segoeui.ttf", "arial.ttf"],
+        "portable": ["DejaVuSans.ttf", "LiberationSans-Regular.ttf"],
+    },
+    "mono": {
+        "windows": ["consola.ttf", "cour.ttf"],
+        "portable": ["DejaVuSansMono.ttf", "LiberationMono-Regular.ttf"],
+    },
+    "serif": {
+        "windows": ["georgia.ttf", "times.ttf"],
+        "portable": ["DejaVuSerif.ttf", "LiberationSerif-Regular.ttf"],
+    },
+}
+
+
 def _pack_block(bits_str: str) -> bytearray:
     # bits_str are human way (MSB:LSB) of representing binary numbers (e.g. "1010" means 12)
     if len(bits_str) % 8 != 0:
@@ -29,20 +45,16 @@ def _resample_lanczos():
     return Image.LANCZOS
 
 
-def _load_text_font(font_size):
+def _load_text_font(font_size, font_family="sans"):
     font_candidates = []
+    family = FONT_CANDIDATES.get((font_family or "sans").lower(), FONT_CANDIDATES["sans"])
 
     windir = os.environ.get("WINDIR")
     if windir:
-        font_candidates.extend([
-            os.path.join(windir, "Fonts", "arial.ttf"),
-            os.path.join(windir, "Fonts", "segoeui.ttf"),
-        ])
+        font_candidates.extend([os.path.join(windir, "Fonts", candidate) for candidate in family["windows"]])
 
-    font_candidates.extend([
-        "arial.ttf",
-        "DejaVuSans.ttf",
-    ])
+    font_candidates.extend(family["portable"])
+    font_candidates.extend(FONT_CANDIDATES["sans"]["portable"])
 
     for font_path in font_candidates:
         try:

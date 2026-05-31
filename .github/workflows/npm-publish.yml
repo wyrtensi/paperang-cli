@@ -58,20 +58,20 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import importlib.util
           import json
           import os
-          import re
-          import tomllib
           import urllib.request
 
-          project = tomllib.loads(Path("../pyproject.toml").read_text(encoding="utf-8"))
-          package_version = project["project"]["version"]
-          init_text = Path("../src/paperang_cli/__init__.py").read_text(encoding="utf-8")
-          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
+          package_version = json.loads(Path("../src/paperang_cli/version-manifest.json").read_text(encoding="utf-8"))["version"]
+          spec = importlib.util.spec_from_file_location("paperang_cli_version", Path("../src/paperang_cli/_version.py"))
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
           wrapper = json.loads(Path("package.json").read_text(encoding="utf-8"))
           wrapper_version = wrapper["version"]
 
-          assert package_version == init_version == wrapper_version
+          assert package_version == module.__version__ == wrapper_version
           assert wrapper["paperangCli"]["pythonPackageVersion"] == package_version
           assert wrapper["repository"]["url"] == "git+https://github.com/wyrtensi/paperang-cli.git"
 

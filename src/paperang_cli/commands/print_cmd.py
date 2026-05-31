@@ -20,6 +20,20 @@ def print_group() -> None:
 @click.argument("text")
 @click.option("--address", type=str, help="Optional printer MAC address override.")
 @click.option("--font-size", type=int, help="Override font size for this print job.")
+@click.option(
+    "--font-family",
+    type=click.Choice(["sans", "mono", "serif"], case_sensitive=False),
+    default=None,
+    help="Override the generic system font family for this print job.",
+)
+@click.option("--min-font-size", type=int, default=None, help="Minimum font size to use when autofit is enabled.")
+@click.option("--autofit/--no-autofit", default=None, help="Enable or disable rotated-label font autofit.")
+@click.option(
+    "--orientation",
+    type=click.Choice(["normal", "rotate-90-cw", "rotate-90-ccw"], case_sensitive=False),
+    default=None,
+    help="Render orientation for the print job.",
+)
 @click.option("--feed-mm", type=float, help="Override post-print feed in millimeters.")
 @click.option("--allow-paper-use", is_flag=True, help="Permit a real paper-consuming print.")
 @click.option("--dry-run", is_flag=True, help="Render and validate without sending anything to the printer.")
@@ -29,6 +43,10 @@ def print_text_command(
     text: str,
     address: str | None,
     font_size: int | None,
+    font_family: str | None,
+    min_font_size: int | None,
+    autofit: bool | None,
+    orientation: str | None,
     feed_mm: float | None,
     allow_paper_use: bool,
     dry_run: bool,
@@ -40,6 +58,10 @@ def print_text_command(
         paragraph=False,
         address=address,
         font_size=font_size,
+        font_family=font_family.lower() if font_family else None,
+        min_font_size=min_font_size,
+        autofit=autofit,
+        orientation=orientation.lower() if orientation else None,
         feed_mm=feed_mm,
         allow_paper_use=allow_paper_use,
         dry_run=dry_run,
@@ -50,6 +72,20 @@ def print_text_command(
 @click.argument("text")
 @click.option("--address", type=str, help="Optional printer MAC address override.")
 @click.option("--font-size", type=int, help="Override font size for this print job.")
+@click.option(
+    "--font-family",
+    type=click.Choice(["sans", "mono", "serif"], case_sensitive=False),
+    default=None,
+    help="Override the generic system font family for this print job.",
+)
+@click.option("--min-font-size", type=int, default=None, help="Minimum font size to use when autofit is enabled.")
+@click.option("--autofit/--no-autofit", default=None, help="Enable or disable rotated-label font autofit.")
+@click.option(
+    "--orientation",
+    type=click.Choice(["normal", "rotate-90-cw", "rotate-90-ccw"], case_sensitive=False),
+    default=None,
+    help="Render orientation for this print job.",
+)
 @click.option("--feed-mm", type=float, help="Override post-print feed in millimeters.")
 @click.option("--allow-paper-use", is_flag=True, help="Permit a real paper-consuming print.")
 @click.option("--dry-run", is_flag=True, help="Render and validate without sending anything to the printer.")
@@ -59,6 +95,10 @@ def print_paragraph_command(
     text: str,
     address: str | None,
     font_size: int | None,
+    font_family: str | None,
+    min_font_size: int | None,
+    autofit: bool | None,
+    orientation: str | None,
     feed_mm: float | None,
     allow_paper_use: bool,
     dry_run: bool,
@@ -70,6 +110,10 @@ def print_paragraph_command(
         paragraph=True,
         address=address,
         font_size=font_size,
+        font_family=font_family.lower() if font_family else None,
+        min_font_size=min_font_size,
+        autofit=autofit,
+        orientation=orientation.lower() if orientation else None,
         feed_mm=feed_mm,
         allow_paper_use=allow_paper_use,
         dry_run=dry_run,
@@ -83,6 +127,10 @@ def _run_print(
     paragraph: bool,
     address: str | None,
     font_size: int | None,
+    font_family: str | None,
+    min_font_size: int | None,
+    autofit: bool | None,
+    orientation: str | None,
     feed_mm: float | None,
     allow_paper_use: bool,
     dry_run: bool,
@@ -93,6 +141,13 @@ def _run_print(
             text,
             paragraph=paragraph,
             font_size=font_size,
+            font_family=font_family,
+            min_font_size=min_font_size,
+            autofit=autofit,
+            orientation=orientation,
+            horizontal_padding_px=None,
+            vertical_padding_px=None,
+            line_spacing_px=None,
             feed_mm=feed_mm,
             allow_paper_use=allow_paper_use,
             dry_run=dry_run,
@@ -104,12 +159,17 @@ def _run_print(
 @print_group.command("image")
 @click.argument("image_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option("--address", type=str, help="Optional printer MAC address override.")
+@click.option(
+    "--orientation",
+    type=click.Choice(["normal", "rotate-90-cw", "rotate-90-ccw"], case_sensitive=False),
+    default=None,
+    help="Render orientation for the image print.",
+)
 @click.option("--feed-mm", type=float, help="Override post-print feed in millimeters.")
 @click.option(
     "--mode",
     type=click.Choice(["sticker", "photo"], case_sensitive=False),
-    default="sticker",
-    show_default=True,
+    default=None,
     help="High-level image preset. Sticker uses hard contrast, while photo uses dithering.",
 )
 @click.option(
@@ -125,19 +185,24 @@ def print_image_command(
     ctx: click.Context,
     image_path: Path,
     address: str | None,
+    orientation: str | None,
     feed_mm: float | None,
-    mode: str,
-    conversion: str,
+    mode: str | None,
+    conversion: str | None,
     allow_paper_use: bool,
     dry_run: bool,
 ) -> None:
     """Print a local image file after converting it to a monochrome printer bitstream."""
     with cli_error_boundary(ctx):
         driver = registry.get_driver(ctx.obj["settings"])
-        resolved_conversion = resolve_image_conversion(mode=mode, conversion=conversion)
+        resolved_conversion = None
+        if mode is not None or conversion is not None:
+            resolved_conversion = resolve_image_conversion(mode=mode, conversion=conversion)
         result = driver.print_image(
             image_path,
+            mode=mode.lower() if mode else None,
             conversion=resolved_conversion,
+            orientation=orientation.lower() if orientation else None,
             feed_mm=feed_mm,
             allow_paper_use=allow_paper_use,
             dry_run=dry_run,
@@ -155,15 +220,13 @@ def print_image_command(
 @click.option(
     "--layout",
     type=click.Choice(["text-above", "image-above"], case_sensitive=False),
-    default="text-above",
-    show_default=True,
+    default=None,
     help="Vertical arrangement for the composed print.",
 )
 @click.option(
     "--mode",
     type=click.Choice(["sticker", "photo"], case_sensitive=False),
-    default="sticker",
-    show_default=True,
+    default=None,
     help="Image preset for the image part of the composed print.",
 )
 @click.option(
@@ -182,21 +245,24 @@ def print_compose_command(
     address: str | None,
     font_size: int | None,
     feed_mm: float | None,
-    layout: str,
-    mode: str,
-    conversion: str,
+    layout: str | None,
+    mode: str | None,
+    conversion: str | None,
     allow_paper_use: bool,
     dry_run: bool,
 ) -> None:
     """Print wrapped text together with a local image in one combined layout."""
     with cli_error_boundary(ctx):
         driver = registry.get_driver(ctx.obj["settings"])
-        resolved_conversion = resolve_image_conversion(mode=mode, conversion=conversion)
+        resolved_conversion = None
+        if mode is not None or conversion is not None:
+            resolved_conversion = resolve_image_conversion(mode=mode, conversion=conversion)
         result = driver.print_compose(
             text,
             image_path,
-            layout=layout.lower(),
+            layout=layout.lower() if layout else None,
             font_size=font_size,
+            mode=mode.lower() if mode else None,
             conversion=resolved_conversion,
             feed_mm=feed_mm,
             allow_paper_use=allow_paper_use,
@@ -252,6 +318,19 @@ def _emit_print_result(ctx: click.Context, result) -> None:
         human_lines.append(f"Feed units: {result.feed_units}")
     if result.font_size is not None:
         human_lines.append(f"Font size: {result.font_size}")
+    if result.styling:
+        orientation = result.styling.get("orientation")
+        font_family = result.styling.get("font_family")
+        autofit_applied = result.styling.get("autofit_applied")
+        if orientation:
+            human_lines.append(f"Orientation: {orientation}")
+        if font_family:
+            human_lines.append(f"Font family: {font_family}")
+        if autofit_applied:
+            human_lines.append("Autofit applied: True")
+        mode = result.styling.get("mode")
+        if mode:
+            human_lines.append(f"Mode: {mode}")
     if result.bytes_sent is not None:
         human_lines.append(f"Bytes prepared: {result.bytes_sent}")
     if result.battery_after is not None:

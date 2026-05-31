@@ -3,18 +3,16 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 compatibility
-    import tomli as tomllib
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILL_ROOT = REPO_ROOT / ".agents" / "skills" / "paperang-cli"
 PUBLIC_SKILL_ROOT = REPO_ROOT / "skills" / "paperang-cli"
+VERSION_MANIFEST_PATH = REPO_ROOT / "src" / "paperang_cli" / "version-manifest.json"
+VERSION_MODULE_PATH = REPO_ROOT / "src" / "paperang_cli" / "_version.py"
 CONTRACT_PAIRS = (
     (
         REPO_ROOT / "docs" / "agents" / "cli-contract.md",
@@ -87,14 +85,24 @@ def validate_public_skill_sync() -> None:
         )
 
 
+def load_version_manifest() -> dict:
+    return json.loads(VERSION_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def load_runtime_version() -> str:
+    spec = importlib.util.spec_from_file_location("paperang_cli_version", VERSION_MODULE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module.__version__
+
+
 def validate_version_sync() -> None:
-    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    package_version = project["project"]["version"]
-    init_text = (REPO_ROOT / "src" / "paperang_cli" / "__init__.py").read_text(encoding="utf-8")
-    init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
+    package_version = str(load_version_manifest()["version"])
+    runtime_version = load_runtime_version()
     contract = json.loads((SKILL_ROOT / "references" / "cli-contract.json").read_text(encoding="utf-8"))
 
-    assert package_version == init_version == contract["package_version"]
+    assert package_version == runtime_version == contract["package_version"]
 
 
 def validate_safety_rules() -> None:

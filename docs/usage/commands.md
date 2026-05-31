@@ -25,6 +25,66 @@ Return structured output suitable for scripts and agents.
 
 Enable verbose logging. This is useful for BLE protocol investigation.
 
+## `api list`
+
+Non-printing command that lists known model-specific API entries and whether they are currently available.
+
+Examples:
+
+```powershell
+paperang api list
+paperang --json api list
+```
+
+Typical data returned:
+
+- API identifier such as `p1` or `p2`
+- matching model id
+- whether the facade is available in the current package version
+- current status such as `available` or `coming-soon`
+- current or planned facade class name
+
+## `api p1`
+
+Non-printing command that shows the supported `PaperangP1` Python API surface exposed by the package.
+
+Examples:
+
+```powershell
+paperang api p1
+paperang --json api p1
+```
+
+Typical data returned:
+
+- availability information for the model-specific facade
+- import path for the public class
+- current implementation module for the model-specific facade
+- constructor options and defaults
+- supported high-level methods
+- current styling support such as generic font families and rotated print methods
+- current safety requirements for real printing
+- unsupported parity gaps versus `paperang-p2-lib`
+
+## `api p2`
+
+Non-printing command that shows the placeholder contract for a future `PaperangP2`-style facade.
+
+Examples:
+
+```powershell
+paperang api p2
+paperang --json api p2
+```
+
+Typical data returned:
+
+- `coming-soon` availability status
+- explicit note that no public P2 facade is implemented yet
+- planned facade name
+- empty constructor and method lists
+- parity gaps that explain what is still unavailable
+
 ## `status`
 
 Non-printing command that connects to the configured printer and reports current information.
@@ -137,12 +197,20 @@ Safe validation:
 paperang print text "test print" --dry-run
 ```
 
+Useful styling overrides:
+
+- `--font-family sans|mono|serif`
+- `--min-font-size INT`
+- `--autofit` or `--no-autofit`
+- `--orientation normal|rotate-90-cw|rotate-90-ccw`
+
 Real printing:
 
 ```powershell
 paperang print text "test print" --allow-paper-use
 paperang print text "test print" --allow-paper-use --feed-mm 6
 paperang print text "test print" --allow-paper-use --font-size 40
+paperang print text "long shipping label" --dry-run --orientation rotate-90-cw --font-family mono --autofit
 ```
 
 ## `print paragraph`
@@ -154,6 +222,8 @@ Safe validation:
 ```powershell
 paperang print paragraph "This is a test print paragraph." --dry-run
 ```
+
+The same styling overrides as `print text` are available here, including rotated label rendering and rotated-label autofit.
 
 Real printing:
 
@@ -172,6 +242,7 @@ Safe validation:
 paperang print image .\sample.png --dry-run
 paperang --json print image .\sample.png --dry-run --mode sticker
 paperang --json print image .\sample.png --dry-run --mode photo
+paperang --json print image .\sample.png --dry-run --orientation rotate-90-cw
 ```
 
 Real printing:
@@ -188,6 +259,7 @@ Mode behavior:
 - `--mode sticker` is the default and uses a hard threshold intended for logos, line art, stickers, and other already-high-contrast images
 - `--mode photo` uses dithering and is the better starting point for photographs and smooth gradients
 - `--conversion` remains available as a lower-level override for manual experimentation and debugging
+- `--orientation rotate-90-cw|rotate-90-ccw` rotates the source image before it is fit to the fixed P1 print width
 
 Current note:
 
@@ -198,6 +270,11 @@ Current note:
 - `--dry-run` validates conversion and packaging, not the final printed visual quality
 
 ## `print compose`
+
+`print compose` still uses the ordinary vertical layout path in the current release.
+
+- layout and image defaults can now come from `print_defaults.compose`
+- rotated compose printing is not implemented yet
 
 Print one combined layout made from wrapped text plus a local image.
 
@@ -275,6 +352,12 @@ paperang config init
 paperang config init --force
 paperang config init --path .\my-printer.json
 ```
+
+## Python Library Note
+
+The CLI and the Python `PaperangP1` facade intentionally share the same driver, render, and safety logic.
+
+Use `paperang api list` to see which model-specific facades are implemented in the installed package. Use `paperang api p1` or `paperang api p2` when you want a quick read-only view of one model entry. Use [Paperang P1 Python API](p1-api.md) for the full library guide.
 
 ## Exit Behavior
 

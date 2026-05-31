@@ -205,21 +205,41 @@ Confirm the published package:
 python -m pip index versions paperang-cli
 ```
 
+## Changing The Version
+
+Use one source of truth for release version changes:
+
+1. Edit `src/paperang_cli/version-manifest.json`.
+2. Run `python scripts/sync-version-manifest.py`.
+3. Run at least `python scripts/check-agent-skill.py`.
+4. Run the normal release validation flow before tagging or publishing.
+
+What the sync script updates for you:
+
+- `docs/agents/cli-contract.json`
+- `.agents/skills/paperang-cli/references/cli-contract.json`
+- `skills/paperang-cli/references/cli-contract.json`
+- `npm/package.json`
+- `npm/package-lock.json`
+
+Most human-facing docs intentionally say `current release` instead of repeating a literal version number. That means a routine version bump normally does not require manual edits across README pages or usage guides.
+
 ## Routine PyPI Release
 
 Before every release:
 
-1. Update `version` in `pyproject.toml`.
-2. Update `__version__` in `src/paperang_cli/__init__.py`.
+1. Update `src/paperang_cli/version-manifest.json`.
+2. Run `python scripts/sync-version-manifest.py`.
 3. Run local release checks.
-4. Commit and push the version change.
+4. Commit and push the synchronized version change.
 5. Wait for CI to pass.
 6. Create a GitHub Release with tag `v<package-version>`.
 
 Example:
 
 ```powershell
-gh release create v0.1.1 --repo wyrtensi/paperang-cli --target main --title "paperang-cli v0.1.1" --generate-notes
+$version = (Get-Content src/paperang_cli/version-manifest.json | ConvertFrom-Json).version
+gh release create "v$version" --repo wyrtensi/paperang-cli --target main --title "paperang-cli v$version" --generate-notes
 ```
 
 Publishing the GitHub Release triggers PyPI publishing automatically.
@@ -300,8 +320,8 @@ For maximum protection after the basic flow is proven, switch the trusted publis
 
 Before a release:
 
-1. Keep the npm wrapper version aligned with `pyproject.toml` and `src/paperang_cli/__init__.py`.
-2. Keep `paperangCli.pythonPackageVersion` aligned with the same version.
+1. Keep `src/paperang_cli/version-manifest.json` as the single source of truth.
+2. Run `python scripts/sync-version-manifest.py` before committing a release bump.
 3. Publish the Python package first.
 4. Let the npm workflow verify PyPI availability, run wrapper tests, inspect the tarball, and publish through OIDC.
 

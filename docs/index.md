@@ -7,20 +7,26 @@
 It exists to provide:
 
 - a stable command-line interface
+- a documented Python API for Paperang P1 scripts
 - a safe automation surface for humans and agents
 - a clean place for tests and documentation
 - a driver boundary for future printer models
 
 ## Current Scope
 
-Version `0.1.0` supports one model:
+The current release supports one live model:
 
 - `paperang_p1`
+
+The API catalog also includes a `coming-soon` placeholder for `p2`, but that is not a supported model yet.
 
 The CLI currently includes:
 
 - `status`
 - `discover`
+- `api list`
+- `api p1`
+- `api p2`
 - `battery`
 - `mac`
 - `probe`
@@ -38,7 +44,8 @@ The CLI currently includes:
 If you are using the project as a person:
 
 1. Read `installation.md`.
-2. Read `usage/configuration.md`.
+2. Read `usage/p1-api.md` if you want the Python library surface.
+3. Read `usage/configuration.md`.
 3. Run `paperang status` or `paperang discover` before printing.
 4. Use `--dry-run` before any real print.
 5. Treat `print image` as experimental until you verify real hardware output.
@@ -56,6 +63,7 @@ If you are using the project as an automation or agent surface:
 - `installation.md`: install and local setup
 - `../skills/paperang-cli/SKILL.md`: portable distributable Agent Skill for safe automation
 - `usage/commands.md`: command reference and examples
+- `usage/p1-api.md`: high-level Python API for `PaperangP1`
 - `usage/configuration.md`: config format, resolution order, and recommended defaults
 - `development/architecture.md`: package structure and design rationale
 - `development/extending-printers.md`: how to add another printer model later

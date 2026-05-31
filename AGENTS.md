@@ -34,7 +34,7 @@ Prefer `paperang` unless the host already has a conflicting executable with that
 - Require a successful matching `print ... --dry-run` before a real print. Keep the same content, image, layout, conversion mode, font size, and feed options.
 - Real `print text`, `print paragraph`, `print image`, and `print compose` commands require `--allow-paper-use`.
 - `print self-test` requires `--allow-large-paper-use` and should be treated as a high-paper-consumption action.
-- Do not assume additional models exist yet. `paperang_p1` is the only supported model in v0.1.0.
+- Do not assume additional models exist yet. `paperang_p1` is the only supported model in the current release. The API catalog may also show planned placeholders such as `p2`, but those are unavailable.
 
 Image printing should currently be treated as experimental. Agents should assume that physical output quality may still need manual validation and user confirmation.
 

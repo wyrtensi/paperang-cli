@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const versionManifest = require("../../src/paperang_cli/version-manifest.json");
 const test = require("node:test");
 
 const {
@@ -25,7 +26,7 @@ test("other platforms prefer python3", () => {
 });
 
 test("Python package version matches the npm wrapper version", () => {
-  assert.equal(getPythonPackageSpec(), "paperang-cli==0.1.0");
+  assert.equal(getPythonPackageSpec(), `paperang-cli==${versionManifest.version}`);
 });
 
 test("launcher forwards CLI arguments through the Python module", () => {
