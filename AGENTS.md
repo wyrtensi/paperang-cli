@@ -32,6 +32,8 @@ Prefer `paperang` unless the host already has a conflicting executable with that
 - Prefer `--json` for machine-readable output.
 - Prefer `battery`, `mac`, `probe`, `status`, and `discover` before any printing command.
 - Require a successful matching `print ... --dry-run` before a real print. Keep the same content, image, layout, conversion mode, font size, and feed options.
+- Treat an imperative request such as "print this" as approval for one matching non-self-test real print after a successful dry-run. Do not ask the same question again.
+- Ask for explicit approval before copies, retries, repeated prints, changed parameters, or any `print self-test`.
 - Real `print text`, `print paragraph`, `print image`, and `print compose` commands require `--allow-paper-use`.
 - `print self-test` requires `--allow-large-paper-use` and should be treated as a high-paper-consumption action.
 - Do not assume additional models exist yet. `paperang_p1` is the only supported model in the current release. The API catalog may also show planned placeholders such as `p2`, but those are unavailable.

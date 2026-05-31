@@ -27,12 +27,20 @@ Treat these rules as hard requirements:
 2. Use non-printing commands first: `config show`, `discover`, `probe`, `status`, `battery`, and `mac`.
 3. Run a successful matching `print ... --dry-run` before every real print.
 4. Keep content, image, layout, mode, conversion, font size, font family, orientation, autofit intent, and feed options unchanged between dry-run and real print.
-5. Report the dry-run result and ask for explicit approval before consuming paper.
-6. Add `--allow-paper-use` only after approval for `print text`, `print paragraph`, `print image`, or `print compose`.
-7. Add `--allow-large-paper-use` only after specific approval for `print self-test`.
-8. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
+5. Treat an imperative user request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run. Report the dry-run result, but do not ask the same question again.
+6. Ask for explicit approval before consuming paper when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints.
+7. Add `--allow-paper-use` only after approval from the current request or a follow-up for `print text`, `print paragraph`, `print image`, or `print compose`.
+8. Add `--allow-large-paper-use` only after specific follow-up approval for `print self-test`.
+9. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
 
 `print image` and `print compose` are experimental physical-output paths. A successful dry-run validates rendering and packaging, not printer readiness or final paper quality.
+
+## Approval Interpretation
+
+- "Print this text", "print this image", and "print this label" authorize one matching real print after a successful dry-run.
+- "Can this be printed?", "preview this", and "show me how this would look" do not authorize paper use.
+- A first print does not authorize another copy, a retry, or a print with changed parameters.
+- Always ask again before `print self-test` because it consumes substantially more paper.
 
 ## Supported Hardware
 
@@ -73,7 +81,7 @@ For a rotated image preview:
 paperang --json print image ".\sample.png" --dry-run --orientation rotate-90-cw
 ```
 
-After reporting the result and receiving explicit approval:
+After a successful matching dry-run, when the user already asked to print:
 
 ```powershell
 paperang --json print text "Hello from Paperang" --allow-paper-use

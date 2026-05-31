@@ -134,8 +134,12 @@ Agents must:
 
 1. obtain an explicit user request before consuming paper
 2. run the matching `--dry-run`
-3. report the dry-run result and ask for explicit approval for the real print
-4. add the correct allow flag only after that approval
+3. treat an imperative request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run
+4. report the dry-run result, but do not ask the same question again when the current request already authorized that print
+5. ask for explicit approval when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints
+6. add the correct allow flag only after approval from the current request or a follow-up
+
+`print self-test` always requires specific follow-up approval after its dry-run because it consumes substantially more paper.
 
 A missing allow flag is a hard stop. If the CLI returns `SAFETY_ERROR`, do not automatically retry with an allow flag.
 
@@ -203,23 +207,26 @@ When an automation or agent needs to know what Python API surface is actually su
 
 1. Run the selected `print text ... --dry-run` or `print paragraph ... --dry-run`.
 2. When using rotated text, keep `--orientation`, `--font-family`, and `--autofit` identical between dry-run and real print.
-3. Report the dry-run result and ask for explicit approval to consume paper.
-4. Repeat the matching command with `--allow-paper-use`.
+3. Report the dry-run result.
+4. If the current request was exploratory or ambiguous, ask for explicit approval to consume paper.
+5. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
 
 ### Image
 
 1. Run `paperang --json print image ".\sample.png" --dry-run --mode sticker`, or select `--mode photo`.
 2. Include `--orientation` when you want the image rotated along the paper path.
-3. Report that physical quality remains experimental and ask for explicit approval.
-4. Repeat the matching command with `--allow-paper-use`.
-5. Ask the user to validate physical quality before repeated automation.
+3. Report that physical quality remains experimental.
+4. If the current request was exploratory or ambiguous, ask for explicit approval.
+5. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
+6. Ask the user to validate physical quality before repeated automation.
 
 ### Compose
 
 1. Run the matching `paperang --json print compose "label" ".\sample.png" --dry-run --mode sticker`.
-2. Report that the image portion remains experimental and ask for explicit approval.
-3. Repeat the matching command with `--allow-paper-use`.
-4. Ask the user to validate physical layout quality before repeated automation.
+2. Report that the image portion remains experimental.
+3. If the current request was exploratory or ambiguous, ask for explicit approval.
+4. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
+5. Ask the user to validate physical layout quality before repeated automation.
 
 ### Self-test
 

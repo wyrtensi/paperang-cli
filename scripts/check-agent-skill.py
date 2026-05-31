@@ -110,6 +110,14 @@ def validate_safety_rules() -> None:
     for required_text in REQUIRED_SAFETY_TEXT:
         assert required_text in skill_text, f"Missing required safety guidance: {required_text}"
 
+    policy = json.loads((SKILL_ROOT / "references" / "cli-contract.json").read_text(encoding="utf-8"))["safety_policy"]
+    assert policy["imperative_request_authorizes_one_matching_non_self_test_real_print"] is True
+    assert policy["follow_up_real_print_approval_required_when_initial_request_is_exploratory_or_ambiguous"] is True
+    assert {"parameters changed after dry-run", "copies", "retries", "repeated prints"} <= set(
+        policy["new_approval_required_for"]
+    )
+    assert policy["self_test_always_requires_specific_follow_up_approval"] is True
+
 
 def main() -> int:
     validate_required_files()

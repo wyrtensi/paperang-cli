@@ -91,7 +91,16 @@
     "explicit_user_request_required_for_paper_use": true,
     "successful_matching_dry_run_required_before_real_print": true,
     "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
-    "report_dry_run_and_request_real_print_approval": true,
+    "report_dry_run_before_real_print": true,
+    "imperative_request_authorizes_one_matching_non_self_test_real_print": true,
+    "follow_up_real_print_approval_required_when_initial_request_is_exploratory_or_ambiguous": true,
+    "new_approval_required_for": [
+      "parameters changed after dry-run",
+      "copies",
+      "retries",
+      "repeated prints"
+    ],
+    "self_test_always_requires_specific_follow_up_approval": true,
     "safety_error_behavior": "Stop and report SAFETY_ERROR. Do not automatically add an allow flag or retry without explicit user approval.",
     "optional_parameters_do_not_bypass_safety": [
       "--font-size",
@@ -1033,23 +1042,23 @@
     ],
     "text": [
       "paperang --json print text \"hello\" --dry-run",
-      "report the dry-run result and request explicit approval for paper use",
+      "report the dry-run result; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print text \"hello\" --allow-paper-use"
     ],
     "paragraph": [
       "paperang --json print paragraph \"hello\" --dry-run",
-      "report the dry-run result and request explicit approval for paper use",
+      "report the dry-run result; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print paragraph \"hello\" --allow-paper-use"
     ],
     "image": [
       "paperang --json print image \".\\sample.png\" --dry-run --mode sticker",
-      "report experimental physical quality and request explicit approval for paper use",
+      "report experimental physical quality; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print image \".\\sample.png\" --allow-paper-use --mode sticker",
       "request manual physical-quality validation before repeated automation"
     ],
     "compose": [
       "paperang --json print compose \"label\" \".\\sample.png\" --dry-run --mode sticker",
-      "report experimental physical quality and request explicit approval for paper use",
+      "report experimental physical quality; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print compose \"label\" \".\\sample.png\" --allow-paper-use --mode sticker",
       "request manual physical-layout validation before repeated automation"
     ],
