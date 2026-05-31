@@ -64,3 +64,4 @@ If you are using the project as an automation or agent surface:
 - `agents/cli-contract.md`: human-readable automation contract
 - `agents/cli-contract.json`: machine-readable automation contract
 - `agents/publishing.md`: repository bootstrap and release automation runbook
+- `../SECURITY.md`: supported versions, vulnerability reporting, and npm postinstall behavior

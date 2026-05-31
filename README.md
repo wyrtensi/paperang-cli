@@ -70,6 +70,8 @@ npm install --global paperang-cli
 
 The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
 
+The npm wrapper uses a `postinstall` lifecycle script to run `pip install` for the matching Python package version. See the [security policy](SECURITY.md#npm-postinstall-behavior) for details and an `--ignore-scripts` audit path.
+
 ## Agent Skill
 
 This repository includes a portable [Agent Skill](https://agentskills.io/) at `skills/paperang-cli/` and a synchronized repository-local copy at `.agents/skills/paperang-cli/`.
@@ -267,6 +269,7 @@ See [Configuration](docs/usage/configuration.md) for the full schema.
 - [Agent contract](docs/agents/cli-contract.md)
 - [Portable Agent Skill](skills/paperang-cli/SKILL.md)
 - [Publishing runbook for agents](docs/agents/publishing.md)
+- [Security policy](SECURITY.md)
 
 ## Project History And Acknowledgements
 

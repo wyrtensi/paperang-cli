@@ -18,8 +18,15 @@ npm install --global paperang-cli
 paperang --help
 ```
 
-The wrapper installs `paperang-cli==0.1.0` through Python's package installer during npm installation.
+The wrapper runs a `postinstall` lifecycle script that installs `paperang-cli==0.1.0` through Python's package installer during npm installation. It retries with `--user` if the first pip installation fails.
+
+To inspect the wrapper before allowing lifecycle scripts to run:
+
+```powershell
+npm install --global paperang-cli --ignore-scripts
+python -m pip install --upgrade paperang-cli
+```
 
 Real Bluetooth Low Energy communication and physical printing have been tested only on Windows. CI compatibility checks on Linux and macOS do not prove hardware behavior on those platforms.
 
-See the [main repository](https://github.com/wyrtensi/paperang-cli) for usage, safety notes, and documentation.
+See the [main repository](https://github.com/wyrtensi/paperang-cli) and its [security policy](https://github.com/wyrtensi/paperang-cli/blob/main/SECURITY.md) for usage, safety notes, and documentation.
