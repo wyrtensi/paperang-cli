@@ -1,5 +1,11 @@
 # paperang-cli
 
+[![CI](https://img.shields.io/github/actions/workflow/status/wyrtensi/paperang-cli/ci.yml?branch=main&label=CI)](https://github.com/wyrtensi/paperang-cli/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/paperang-cli)](https://pypi.org/project/paperang-cli/)
+[![Python versions](https://img.shields.io/pypi/pyversions/paperang-cli)](https://pypi.org/project/paperang-cli/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Hardware tested on Windows](https://img.shields.io/badge/hardware_tested-Windows-0078D6?logo=windows11&logoColor=white)
+
 `paperang-cli` is a standalone command-line tool for working with Paperang thermal printers from Python.
 
 It provides a small, script-friendly interface for discovering a printer, checking its status, and printing text or images with explicit safety gates. JSON output is available for automation and agent-driven workflows.
