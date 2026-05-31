@@ -1,0 +1,50 @@
+{
+  "name": "paperang-cli",
+  "version": "0.1.0",
+  "description": "npm wrapper for the paperang-cli Python package",
+  "license": "MIT",
+  "author": "wyrtensi",
+  "type": "commonjs",
+  "bin": {
+    "paperang": "bin/paperang.js",
+    "paperang-cli": "bin/paperang-cli.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wyrtensi/paperang-cli.git",
+    "directory": "npm"
+  },
+  "bugs": {
+    "url": "https://github.com/wyrtensi/paperang-cli/issues"
+  },
+  "homepage": "https://github.com/wyrtensi/paperang-cli#readme",
+  "engines": {
+    "node": ">=22.14.0",
+    "npm": ">=11.5.1"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/postinstall.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "paperang",
+    "paperang-p1",
+    "thermal-printer",
+    "cli",
+    "bluetooth"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "paperangCli": {
+    "pythonPackageVersion": "0.1.0",
+    "pythonMinimumVersion": "3.10"
+  }
+}

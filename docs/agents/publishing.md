@@ -2,14 +2,14 @@
 
 ## Scope
 
-This runbook covers repository bootstrap, PyPI Trusted Publishing, routine Python releases, and the planned npm wrapper.
+This runbook covers repository bootstrap, PyPI Trusted Publishing, routine Python releases, and the npm wrapper.
 
 The canonical repository is:
 
 - GitHub: `wyrtensi/paperang-cli`
 - PyPI project: `paperang-cli`
 
-Keep the Python package at the repository root. If an npm wrapper is added later, place it under `npm/` in the same repository.
+Keep the Python package at the repository root and the npm wrapper under `npm/` in the same repository.
 
 ## Safety Boundary
 
@@ -210,31 +210,76 @@ If publishing fails:
 6. Confirm that the version has not already been uploaded to PyPI.
 7. Inspect failed logs with `gh run view <run-id> --log-failed`.
 
-## Planned npm Wrapper
+## npm Wrapper
 
-Do not create a separate npm bridge repository. Add a small wrapper under `npm/` when PyPI publishing is stable.
+Do not create a separate npm bridge repository. The small wrapper lives under `npm/` in this repository.
 
-The wrapper should:
+The wrapper:
 
-- use package name `paperang-cli` if the npm name remains available
-- expose `paperang` and `paperang-cli` executable shims
-- install the matching `paperang-cli==<version>` Python package from PyPI
-- keep `package.json.repository.url` exactly aligned with `https://github.com/wyrtensi/paperang-cli.git`
-- test the npm package with `npm pack --dry-run`
-- publish only after the matching PyPI version exists
-- use Node `24` and npm `>=11.5.1`
-- publish from a GitHub-hosted runner with `id-token: write`
+- uses package name `paperang-cli`
+- exposes `paperang` and `paperang-cli` executable shims
+- installs the matching `paperang-cli==<version>` Python package from PyPI
+- keeps `package.json.repository.url` exactly aligned with `https://github.com/wyrtensi/paperang-cli.git`
+- tests the npm package with `npm test` and `npm pack --dry-run`
+- publishes only after the matching PyPI version exists
+- uses Node `24` and npm `>=11.5.1`
+- publishes from a GitHub-hosted runner with `id-token: write`
 
 npm Trusted Publishing is configured in the settings of an existing npm package. Unlike PyPI pending publishers, npm package ownership must be bootstrapped before the trusted publisher can be added.
+
+Validate the wrapper locally:
+
+```powershell
+Set-Location npm
+npm ci --ignore-scripts
+npm test
+npm pack --dry-run
+Set-Location ..
+```
+
+## First npm Publish
+
+The first npm publish is a one-time interactive bootstrap because the package settings do not exist before the package exists:
+
+```powershell
+npm login
+npm whoami
+Set-Location npm
+npm publish --access public
+Set-Location ..
+```
+
+Do not add an npm token to GitHub Actions.
+
+Create the GitHub environment used by the automated workflow:
+
+```powershell
+gh api --method PUT repos/wyrtensi/paperang-cli/environments/npm
+```
 
 After the initial npm package exists:
 
 1. Open the package settings on npmjs.com.
-2. Add a GitHub Actions Trusted Publisher for `wyrtensi/paperang-cli`.
-3. Enter the npm workflow filename only.
-4. Select the allowed publish action.
-5. Prefer staged publishing when the npm wrapper is implemented.
+2. Add a GitHub Actions Trusted Publisher.
+3. Use owner `wyrtensi`, repository `paperang-cli`, workflow filename `npm-publish.yml`, and environment `npm`.
+4. Allow `npm publish`.
+5. Verify OIDC publishing on the next release.
 6. Restrict traditional token publishing after OIDC is verified.
+
+For maximum protection after the basic flow is proven, switch the trusted publisher to stage-only permission and update the workflow from `npm publish` to `npm stage publish`. Staged releases require interactive review before they become public.
+
+## Routine npm Release
+
+`.github/workflows/npm-publish.yml` automatically runs after a successful PyPI publish. It can also be dispatched manually or triggered with a matching `npm-v<version>` tag.
+
+Before a release:
+
+1. Keep the npm wrapper version aligned with `pyproject.toml` and `src/paperang_cli/__init__.py`.
+2. Keep `paperangCli.pythonPackageVersion` aligned with the same version.
+3. Publish the Python package first.
+4. Let the npm workflow verify PyPI availability, run wrapper tests, inspect the tarball, and publish through OIDC.
+
+The workflow is idempotent: it skips `npm publish` when the matching npm version already exists.
 
 Official reference:
 

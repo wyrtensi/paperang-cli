@@ -1,0 +1,115 @@
+name: Publish npm wrapper
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Publish Python package to PyPI
+    types:
+      - completed
+  push:
+    tags:
+      - "npm-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-paperang-cli
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish paperang-cli to npm
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Verify npm CLI version
+        working-directory: npm
+        run: |
+          node --version
+          npm --version
+          node -e "const version = require('node:child_process').execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(); const [major, minor] = version.split('.').map(Number); if (major < 11 || (major === 11 && minor < 5)) process.exit(1)"
+
+      - name: Verify wrapper version and matching PyPI release
+        working-directory: npm
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import os
+          import re
+          import tomllib
+          import urllib.request
+
+          project = tomllib.loads(Path("../pyproject.toml").read_text(encoding="utf-8"))
+          package_version = project["project"]["version"]
+          init_text = Path("../src/paperang_cli/__init__.py").read_text(encoding="utf-8")
+          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
+          wrapper = json.loads(Path("package.json").read_text(encoding="utf-8"))
+          wrapper_version = wrapper["version"]
+
+          assert package_version == init_version == wrapper_version
+          assert wrapper["paperangCli"]["pythonPackageVersion"] == package_version
+          assert wrapper["repository"]["url"] == "git+https://github.com/wyrtensi/paperang-cli.git"
+
+          if os.environ.get("GITHUB_REF_TYPE") == "tag":
+              assert os.environ["GITHUB_REF_NAME"] == f"npm-v{wrapper_version}"
+
+          urllib.request.urlopen(
+              f"https://pypi.org/pypi/paperang-cli/{wrapper_version}/json",
+              timeout=30,
+          ).close()
+          print(f"paperang-cli=={wrapper_version} is available on PyPI.")
+
+      - name: Install npm metadata
+        working-directory: npm
+        run: npm ci --ignore-scripts
+
+      - name: Test npm wrapper
+        working-directory: npm
+        run: npm test
+
+      - name: Verify npm package contents
+        working-directory: npm
+        run: npm pack --dry-run
+
+      - name: Check whether this version is already published
+        id: npm
+        working-directory: npm
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "paperang-cli@$version" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "paperang-cli@$version is already published."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm with Trusted Publishing
+        if: steps.npm.outputs.already_published != 'true'
+        working-directory: npm
+        run: npm publish

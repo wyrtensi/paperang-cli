@@ -61,6 +61,14 @@ The package installs two equivalent commands:
 
 Use `paperang` by default. Use `paperang-cli` if the shorter command conflicts with another executable on your system.
 
+An npm wrapper is also maintained under `npm/`. After its initial npm registry bootstrap, it can be installed globally with:
+
+```powershell
+npm install --global paperang-cli
+```
+
+The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
+
 ## Safe First Run
 
 Start with commands that do not consume paper:

@@ -101,3 +101,54 @@ jobs:
           name: python-package-distributions
           path: dist/
           if-no-files-found: error
+
+  npm-wrapper:
+    name: Validate npm wrapper
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Verify wrapper version sources
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import re
+          import tomllib
+
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          package_version = project["project"]["version"]
+          init_text = Path("src/paperang_cli/__init__.py").read_text(encoding="utf-8")
+          init_version = re.search(r'__version__ = "([^"]+)"', init_text).group(1)
+          wrapper = json.loads(Path("npm/package.json").read_text(encoding="utf-8"))
+
+          assert package_version == init_version == wrapper["version"]
+          assert wrapper["paperangCli"]["pythonPackageVersion"] == package_version
+          assert wrapper["repository"]["url"] == "git+https://github.com/wyrtensi/paperang-cli.git"
+
+      - name: Install npm metadata
+        working-directory: npm
+        run: npm ci --ignore-scripts
+
+      - name: Test npm wrapper
+        working-directory: npm
+        run: npm test
+
+      - name: Verify npm package contents
+        working-directory: npm
+        run: npm pack --dry-run
