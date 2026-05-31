@@ -44,8 +44,13 @@ def test_render_text_job_rotates_label_and_reports_styling():
     assert rendered.styling.font_size == 36
 
 
-def test_render_text_job_autofits_rotated_multiline_text():
+def test_render_text_job_autofits_rotated_multiline_text(monkeypatch):
     text = "\n".join(["label"] * 20)
+
+    def fake_render_text_canvas(*args, font_size, **kwargs):
+        return Image.new("L", (10, font_size * 20), 255)
+
+    monkeypatch.setattr("paperang_cli.render._render_text_canvas", fake_render_text_canvas)
 
     rendered = render_text_job(
         text,

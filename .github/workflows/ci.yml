@@ -175,7 +175,7 @@ jobs:
           python-version: "3.14"
 
       - name: Install test tooling
-        run: python -m pip install pytest
+        run: python -m pip install -e ".[dev]"
 
       - name: Validate skill and synchronized references
         run: python scripts/check-agent-skill.py
