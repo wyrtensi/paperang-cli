@@ -2,6 +2,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/wyrtensi/paperang-cli/ci.yml?branch=main&label=CI)](https://github.com/wyrtensi/paperang-cli/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/paperang-cli)](https://pypi.org/project/paperang-cli/)
+[![npm version](https://img.shields.io/npm/v/paperang-cli)](https://www.npmjs.com/package/paperang-cli)
 [![Python versions](https://img.shields.io/pypi/pyversions/paperang-cli)](https://pypi.org/project/paperang-cli/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Hardware tested on Windows](https://img.shields.io/badge/hardware_tested-Windows-0078D6?logo=windows11&logoColor=white)
@@ -61,7 +62,7 @@ The package installs two equivalent commands:
 
 Use `paperang` by default. Use `paperang-cli` if the shorter command conflicts with another executable on your system.
 
-An npm wrapper is also maintained under `npm/`. After its initial npm registry bootstrap, it can be installed globally with:
+An npm wrapper is also maintained under `npm/`. Install it globally with:
 
 ```powershell
 npm install --global paperang-cli
