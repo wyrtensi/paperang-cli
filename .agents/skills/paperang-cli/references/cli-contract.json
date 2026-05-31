@@ -1,0 +1,854 @@
+{
+  "schema_version": "0.2.0",
+  "package_version": "0.1.0",
+  "project": "paperang-cli",
+  "canonical_human_contract": "docs/agents/cli-contract.md",
+  "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
+  "stability_definitions": {
+    "stable": "Supported agent-facing behavior in the documented package version.",
+    "experimental": "Implemented behavior that requires manual physical-output validation and may change in later releases.",
+    "internal": "Implementation detail. Agents must not rely on it."
+  },
+  "console_commands": [
+    "paperang",
+    "paperang-cli"
+  ],
+  "preferred_console_command": "paperang",
+  "supported_models": [
+    {
+      "id": "paperang_p1",
+      "status": "supported",
+      "transport": "ble",
+      "supported_live_transports": [
+        "ble"
+      ],
+      "unsupported_live_transports": [
+        "local",
+        "cable",
+        "usb"
+      ],
+      "hardware_tested_platforms": [
+        "windows"
+      ],
+      "compatibility_checks_without_hardware_validation": [
+        "linux",
+        "macos"
+      ],
+      "notes": "For paperang_p1, live printer communication uses BLE only. Do not attempt or document a local, cable, or USB fallback. Real BLE communication and physical printing have been tested only on Windows."
+    }
+  ],
+  "config_resolution": [
+    "--config PATH",
+    "PAPERANG_CLI_CONFIG",
+    "per-user default config path",
+    "built-in defaults"
+  ],
+  "default_config_paths": {
+    "windows": "%APPDATA%\\paperang-cli\\paperang-cli.config.json",
+    "linux_and_macos_with_xdg": "$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json",
+    "linux_and_macos_fallback": "~/.config/paperang-cli/paperang-cli.config.json"
+  },
+  "global_options": [
+    {
+      "name": "--config",
+      "type": "path",
+      "description": "Use a specific JSON config file."
+    },
+    {
+      "name": "--json",
+      "type": "flag",
+      "description": "Emit machine-readable JSON output.",
+      "recommended_for_agents": true
+    },
+    {
+      "name": "--debug",
+      "type": "flag",
+      "description": "Enable verbose diagnostic logging."
+    },
+    {
+      "name": "--version",
+      "type": "flag",
+      "description": "Show the installed CLI version."
+    }
+  ],
+  "automation_output_contract": {
+    "success_envelope": {
+      "status": "ok",
+      "result": {}
+    },
+    "error_envelope": {
+      "status": "error",
+      "code": "CONFIG_ERROR",
+      "message": "...",
+      "exit_code": 2
+    },
+    "ignore_unknown_result_fields": true,
+    "nullable_field_semantics": "Nullable result fields are emitted as null when the printer does not report a usable value.",
+    "human_output_stable_for_parsing": false,
+    "click_usage_error_caveat": "Click-level invocation failures, such as missing arguments, invalid choices, or a missing image file, may exit with code 2 before a command handler runs. They are not guaranteed to use the JSON error envelope even when --json is active."
+  },
+  "safety_policy": {
+    "explicit_user_request_required_for_paper_use": true,
+    "successful_matching_dry_run_required_before_real_print": true,
+    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, and feed options as the intended real print.",
+    "report_dry_run_and_request_real_print_approval": true,
+    "safety_error_behavior": "Stop and report SAFETY_ERROR. Do not automatically add an allow flag or retry without explicit user approval.",
+    "optional_parameters_do_not_bypass_safety": [
+      "--font-size",
+      "--feed-mm",
+      "--layout",
+      "--mode",
+      "--conversion"
+    ],
+    "allow_flag_with_dry_run": {
+      "permitted_by_current_implementation": true,
+      "paper_consumed": false,
+      "printer_connection_attempted": false,
+      "agent_guidance": "Omit allow flags from dry-runs to keep intent clear."
+    },
+    "real_print_flags": {
+      "print.text": "--allow-paper-use",
+      "print.paragraph": "--allow-paper-use",
+      "print.image": "--allow-paper-use",
+      "print.compose": "--allow-paper-use",
+      "print.self-test": "--allow-large-paper-use"
+    },
+    "experimental_print_paths": {
+      "commands": [
+        "print.image",
+        "print.compose"
+      ],
+      "manual_physical_output_validation_required_before_repeated_automation": true,
+      "compose_note": "A matching compose dry-run is mandatory. A separate print image dry-run is useful for isolated image-conversion tuning but does not replace the compose dry-run."
+    }
+  },
+  "dry_run_contract": {
+    "printer_connection_attempted": false,
+    "paper_consumed": false,
+    "commands": {
+      "print.text": {
+        "validates": [
+          "text rendering",
+          "bitstream preparation",
+          "font size",
+          "feed calculation"
+        ],
+        "does_not_validate": [
+          "printer connectivity",
+          "printer readiness",
+          "physical output"
+        ]
+      },
+      "print.paragraph": {
+        "validates": [
+          "wrapped rendering",
+          "bitstream preparation",
+          "font size",
+          "feed calculation"
+        ],
+        "does_not_validate": [
+          "printer connectivity",
+          "printer readiness",
+          "physical output"
+        ]
+      },
+      "print.image": {
+        "validates": [
+          "local image loading",
+          "selected conversion",
+          "bitstream preparation",
+          "feed calculation"
+        ],
+        "does_not_validate": [
+          "printer connectivity",
+          "printer readiness",
+          "physical image quality"
+        ]
+      },
+      "print.compose": {
+        "validates": [
+          "wrapped text",
+          "local image loading",
+          "selected layout and conversion",
+          "combined bitstream preparation",
+          "feed calculation"
+        ],
+        "does_not_validate": [
+          "printer connectivity",
+          "printer readiness",
+          "physical layout quality"
+        ]
+      },
+      "print.self-test": {
+        "validates": [
+          "command path",
+          "high-paper warning payload"
+        ],
+        "does_not_validate": [
+          "printer connectivity",
+          "printer readiness",
+          "hardware self-test state"
+        ]
+      }
+    }
+  },
+  "result_schemas": {
+    "discover_device": {
+      "name": {
+        "type": "string",
+        "nullable": false
+      },
+      "address": {
+        "type": "string",
+        "nullable": false
+      },
+      "rssi": {
+        "type": "int",
+        "nullable": true
+      },
+      "details": {
+        "type": "string",
+        "nullable": true
+      }
+    },
+    "battery": {
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "address": {
+        "type": "string",
+        "nullable": false
+      },
+      "transport": {
+        "type": "string",
+        "nullable": false
+      },
+      "connected": {
+        "type": "bool",
+        "nullable": false
+      },
+      "battery_percent": {
+        "type": "int",
+        "nullable": true
+      }
+    },
+    "mac": {
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "address": {
+        "type": "string",
+        "nullable": false
+      },
+      "transport": {
+        "type": "string",
+        "nullable": false
+      },
+      "connected": {
+        "type": "bool",
+        "nullable": false
+      },
+      "bluetooth_mac": {
+        "type": "string",
+        "nullable": true
+      }
+    },
+    "status": {
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "address": {
+        "type": "string",
+        "nullable": false
+      },
+      "transport": {
+        "type": "string",
+        "nullable": false
+      },
+      "connected": {
+        "type": "bool",
+        "nullable": false
+      },
+      "battery_percent": {
+        "type": "int",
+        "nullable": true
+      },
+      "serial_number": {
+        "type": "string",
+        "nullable": true
+      },
+      "firmware_version": {
+        "type": "string",
+        "nullable": true
+      },
+      "hardware_info": {
+        "type": "string",
+        "nullable": true
+      },
+      "density": {
+        "type": "int",
+        "nullable": true
+      },
+      "power_off_time": {
+        "type": "int",
+        "nullable": true
+      },
+      "raw": {
+        "type": "object",
+        "nullable": false
+      }
+    },
+    "probe": {
+      "extends": "status",
+      "bluetooth_mac": {
+        "type": "string",
+        "nullable": true
+      },
+      "local_transport_supported": {
+        "type": "bool",
+        "nullable": false
+      },
+      "local_transport_note": {
+        "type": "string",
+        "nullable": true
+      }
+    },
+    "print": {
+      "model": {
+        "type": "string",
+        "nullable": false
+      },
+      "address": {
+        "type": "string",
+        "nullable": true
+      },
+      "operation": {
+        "type": "string",
+        "nullable": false
+      },
+      "dry_run": {
+        "type": "bool",
+        "nullable": false
+      },
+      "feed_mm": {
+        "type": "float",
+        "nullable": true
+      },
+      "feed_units": {
+        "type": "int",
+        "nullable": true
+      },
+      "font_size": {
+        "type": "int",
+        "nullable": true
+      },
+      "bytes_sent": {
+        "type": "int",
+        "nullable": true
+      },
+      "paragraph": {
+        "type": "bool",
+        "nullable": true
+      },
+      "source_path": {
+        "type": "string",
+        "nullable": true
+      },
+      "conversion": {
+        "type": "string",
+        "nullable": true
+      },
+      "layout": {
+        "type": "string",
+        "nullable": true
+      },
+      "battery_after": {
+        "type": "int",
+        "nullable": true
+      },
+      "warning": {
+        "type": "string",
+        "nullable": true
+      }
+    }
+  },
+  "commands": {
+    "discover": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "arguments": [],
+      "options": [],
+      "result_schema": "discover_device[]",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3
+      ]
+    },
+    "battery": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false,
+          "description": "Optional direct printer address override."
+        }
+      ],
+      "result_schema": "battery",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "mac": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false,
+          "description": "Optional direct printer address override."
+        }
+      ],
+      "result_schema": "mac",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "status": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false,
+          "description": "Optional direct printer address override."
+        }
+      ],
+      "result_schema": "status",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "probe": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false,
+          "description": "Optional direct printer address override."
+        }
+      ],
+      "result_schema": "probe",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "print.text": {
+      "stability": "stable",
+      "paper_consuming": true,
+      "arguments": [
+        {
+          "name": "text",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "--font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--feed-mm",
+          "type": "float",
+          "required": false
+        },
+        {
+          "name": "--dry-run",
+          "type": "flag",
+          "required": false,
+          "paper_consuming": false
+        },
+        {
+          "name": "--allow-paper-use",
+          "type": "flag",
+          "required_when": "--dry-run is absent"
+        }
+      ],
+      "result_schema": "print",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "print.paragraph": {
+      "stability": "stable",
+      "paper_consuming": true,
+      "arguments": [
+        {
+          "name": "text",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "--font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--feed-mm",
+          "type": "float",
+          "required": false
+        },
+        {
+          "name": "--dry-run",
+          "type": "flag",
+          "required": false,
+          "paper_consuming": false
+        },
+        {
+          "name": "--allow-paper-use",
+          "type": "flag",
+          "required_when": "--dry-run is absent"
+        }
+      ],
+      "result_schema": "print",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "print.image": {
+      "stability": "experimental",
+      "paper_consuming": true,
+      "manual_physical_output_validation_required": true,
+      "arguments": [
+        {
+          "name": "image_path",
+          "type": "path",
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "--feed-mm",
+          "type": "float",
+          "required": false
+        },
+        {
+          "name": "--mode",
+          "type": "choice",
+          "values": [
+            "sticker",
+            "photo"
+          ],
+          "default": "sticker",
+          "required": false,
+          "description": "High-level preset. Use sticker for high-contrast graphics and photo for photographs or smoother grayscale content."
+        },
+        {
+          "name": "--conversion",
+          "type": "choice",
+          "values": [
+            "threshold",
+            "edge",
+            "dither"
+          ],
+          "required": false,
+          "takes_precedence_over": "--mode",
+          "description": "Low-level conversion override for deliberate tuning."
+        },
+        {
+          "name": "--dry-run",
+          "type": "flag",
+          "required": false,
+          "paper_consuming": false
+        },
+        {
+          "name": "--allow-paper-use",
+          "type": "flag",
+          "required_when": "--dry-run is absent"
+        }
+      ],
+      "result_schema": "print",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "print.compose": {
+      "stability": "experimental",
+      "paper_consuming": true,
+      "manual_physical_output_validation_required": true,
+      "arguments": [
+        {
+          "name": "text",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "image_path",
+          "type": "path",
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "--font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--feed-mm",
+          "type": "float",
+          "required": false
+        },
+        {
+          "name": "--layout",
+          "type": "choice",
+          "values": [
+            "text-above",
+            "image-above"
+          ],
+          "default": "text-above",
+          "required": false
+        },
+        {
+          "name": "--mode",
+          "type": "choice",
+          "values": [
+            "sticker",
+            "photo"
+          ],
+          "default": "sticker",
+          "required": false,
+          "description": "High-level preset for the image part."
+        },
+        {
+          "name": "--conversion",
+          "type": "choice",
+          "values": [
+            "threshold",
+            "edge",
+            "dither"
+          ],
+          "required": false,
+          "takes_precedence_over": "--mode",
+          "description": "Low-level conversion override for the image part."
+        },
+        {
+          "name": "--dry-run",
+          "type": "flag",
+          "required": false,
+          "paper_consuming": false
+        },
+        {
+          "name": "--allow-paper-use",
+          "type": "flag",
+          "required_when": "--dry-run is absent"
+        }
+      ],
+      "result_schema": "print",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "print.self-test": {
+      "stability": "stable",
+      "paper_consuming": true,
+      "high_paper_consumption": true,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "--dry-run",
+          "type": "flag",
+          "required": false,
+          "paper_consuming": false
+        },
+        {
+          "name": "--allow-large-paper-use",
+          "type": "flag",
+          "required_when": "--dry-run is absent"
+        }
+      ],
+      "result_schema": "print",
+      "possible_domain_exit_codes": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "config.show": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": false,
+      "result_fields": {
+        "config_path": "string",
+        "config_exists": "bool",
+        "config": "object",
+        "supported_models": "string[]"
+      },
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    },
+    "config.path": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": false,
+      "result_fields": {
+        "config_path": "string"
+      },
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    },
+    "config.init": {
+      "stability": "stable",
+      "paper_consuming": false,
+      "local_filesystem_side_effect": true,
+      "overwrite_requires": "--force",
+      "options": [
+        {
+          "name": "--path",
+          "type": "path",
+          "required": false
+        },
+        {
+          "name": "--force",
+          "type": "flag",
+          "required": false
+        }
+      ],
+      "result_fields": {
+        "config_path": "string"
+      },
+      "possible_domain_exit_codes": [
+        0,
+        2
+      ]
+    }
+  },
+  "exit_codes": {
+    "0": "success",
+    "2": "config error",
+    "3": "driver error",
+    "4": "printer not found",
+    "5": "safety error"
+  },
+  "exit_code_scope": "exit_codes documents project-domain errors. Click-level usage validation may also return exit code 2.",
+  "recommended_agent_workflows": {
+    "readiness_unknown_device": [
+      "paperang --json config show",
+      "paperang --json discover",
+      "paperang --json probe",
+      "paperang --json battery"
+    ],
+    "text": [
+      "paperang --json print text \"hello\" --dry-run",
+      "report the dry-run result and request explicit approval for paper use",
+      "paperang --json print text \"hello\" --allow-paper-use"
+    ],
+    "paragraph": [
+      "paperang --json print paragraph \"hello\" --dry-run",
+      "report the dry-run result and request explicit approval for paper use",
+      "paperang --json print paragraph \"hello\" --allow-paper-use"
+    ],
+    "image": [
+      "paperang --json print image \".\\sample.png\" --dry-run --mode sticker",
+      "report experimental physical quality and request explicit approval for paper use",
+      "paperang --json print image \".\\sample.png\" --allow-paper-use --mode sticker",
+      "request manual physical-quality validation before repeated automation"
+    ],
+    "compose": [
+      "paperang --json print compose \"label\" \".\\sample.png\" --dry-run --mode sticker",
+      "report experimental physical quality and request explicit approval for paper use",
+      "paperang --json print compose \"label\" \".\\sample.png\" --allow-paper-use --mode sticker",
+      "request manual physical-layout validation before repeated automation"
+    ],
+    "self_test": [
+      "prefer status, battery, probe, and ordinary print dry-runs first",
+      "paperang --json print self-test --dry-run",
+      "warn about substantially higher paper use and request explicit self-test approval",
+      "paperang --json print self-test --allow-large-paper-use"
+    ]
+  },
+  "internal_details_not_public_contract": [
+    "BLE library selection",
+    "post-connect warm-up sequencing",
+    "reconnect behavior for reused transport objects",
+    "calibrated feed-unit conversion",
+    "default printer width and density values",
+    "internal driver boundaries"
+  ]
+}

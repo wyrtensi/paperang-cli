@@ -9,6 +9,20 @@ Read these files before driving the CLI:
 - `docs/agents/cli-contract.md`
 - `docs/agents/cli-contract.json`
 
+## Portable Agent Skill
+
+The installable Agent Skill lives at:
+
+- `.agents/skills/paperang-cli/`
+
+Its bundled contract copies under `references/` must stay byte-for-byte synchronized with `docs/agents/`.
+
+Validate changes with:
+
+```powershell
+python scripts/check-agent-skill.py
+```
+
 ## Safe Invocation Rules
 
 Both `paperang` and `paperang-cli` are valid console commands.

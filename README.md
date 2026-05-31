@@ -70,6 +70,50 @@ npm install --global paperang-cli
 
 The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
 
+## Agent Skill
+
+This repository includes a portable [Agent Skill](https://agentskills.io/) at `.agents/skills/paperang-cli/`.
+
+GitHub Copilot discovers it automatically when working from a repository checkout. The same skill can be installed as a personal skill for Codex, Claude Code, GitHub Copilot, and other Agent Skills-compatible clients.
+
+With GitHub CLI `2.90.0` or newer, preview the skill before installation:
+
+```powershell
+gh skill preview wyrtensi/paperang-cli paperang-cli --allow-hidden-dirs
+gh skill install wyrtensi/paperang-cli paperang-cli --allow-hidden-dirs --agent universal --scope user
+```
+
+GitHub CLI supports host-specific installation for many editors and coding agents. Replace `universal` with a value such as `codex`, `claude-code`, `github-copilot`, `cursor`, `gemini-cli`, `windsurf`, or another value listed by `gh skill install --help`.
+
+The repository also includes a small Python fallback installer for common personal locations. From a cloned repository:
+
+```powershell
+python scripts/install-agent-skill.py --target all
+```
+
+Install directly from GitHub on Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/wyrtensi/paperang-cli/main/scripts/install-agent-skill.py | py -3 - --source github --target all
+```
+
+Install directly from GitHub on Linux or macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wyrtensi/paperang-cli/main/scripts/install-agent-skill.py | python3 - --source github --target all
+```
+
+Use `--target codex`, `--target claude`, `--target copilot`, or `--target agents` to install only one personal copy. Existing copies are preserved unless `--force` is provided. Restart the agent client after installation.
+
+You can also ask an agent:
+
+```text
+Install the paperang-cli Agent Skill from:
+https://github.com/wyrtensi/paperang-cli/tree/main/.agents/skills/paperang-cli
+```
+
+The skill is available on all operating systems. Real BLE communication and physical printing remain tested only on Windows.
+
 ## Safe First Run
 
 Start with commands that do not consume paper:
@@ -212,6 +256,7 @@ See [Configuration](docs/usage/configuration.md) for the full schema.
 - [Configuration](docs/usage/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Agent contract](docs/agents/cli-contract.md)
+- [Portable Agent Skill](.agents/skills/paperang-cli/SKILL.md)
 - [Publishing runbook for agents](docs/agents/publishing.md)
 
 ## Project History And Acknowledgements

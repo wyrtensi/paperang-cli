@@ -54,6 +54,7 @@ If you are using the project as an automation or agent surface:
 ## Documentation Map
 
 - `installation.md`: install and local setup
+- `../.agents/skills/paperang-cli/SKILL.md`: portable Agent Skill for safe automation
 - `usage/commands.md`: command reference and examples
 - `usage/configuration.md`: config format, resolution order, and recommended defaults
 - `development/architecture.md`: package structure and design rationale
