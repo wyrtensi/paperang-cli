@@ -33,7 +33,7 @@ That gives you:
 From a cloned repository:
 
 ```powershell
-C:/Users/wyrtensi/AppData/Local/Python/pythoncore-3.14-64/python.exe -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 This also installs `pytest`.
@@ -45,7 +45,7 @@ If you want to validate the package structure before installing, use the `src` d
 ```powershell
 Set-Location "paperang-cli"
 $env:PYTHONPATH = "src"
-C:/Users/wyrtensi/AppData/Local/Python/pythoncore-3.14-64/python.exe -m paperang_cli --help
+python -m paperang_cli --help
 ```
 
 ## Windows Notes

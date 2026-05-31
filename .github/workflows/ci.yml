@@ -174,5 +174,5 @@ jobs:
       - name: Validate skill and synchronized references
         run: python scripts/check-agent-skill.py
 
-      - name: Test portable installer
-        run: python -m pytest -q tests/test_install_agent_skill.py
+      - name: Test portable installer and skill checks
+        run: python -m pytest -q tests/test_install_agent_skill.py tests/test_check_agent_skill.py

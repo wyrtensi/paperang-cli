@@ -36,8 +36,15 @@ These checks remain manual hardware smoke tests:
 From `paperang-cli/`:
 
 ```powershell
-C:/Users/wyrtensi/AppData/Local/Python/pythoncore-3.14-64/python.exe -m pip install -e ".[dev]"
-C:/Users/wyrtensi/AppData/Local/Python/pythoncore-3.14-64/python.exe -m pytest
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+Validate the distributable Agent Skill and its synchronized repository-local copy:
+
+```powershell
+python scripts/check-agent-skill.py
+gh skill publish skills --dry-run
 ```
 
 ## Recommended Manual Smoke Sequence

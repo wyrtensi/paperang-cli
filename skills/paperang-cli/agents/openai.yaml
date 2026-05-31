@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paperang CLI"
+  short_description: "Operate Paperang printers with safety gates"
+  default_prompt: "Use $paperang-cli to inspect printer readiness safely before printing."

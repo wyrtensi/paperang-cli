@@ -58,6 +58,11 @@ paperang-cli.config.json
 *.swo
 *~
 
+# Agent Skills installed into this checkout
+.agents/skills/*
+!.agents/skills/paperang-cli/
+!.agents/skills/paperang-cli/**
+
 # Operating-system files
 .DS_Store
 Thumbs.db

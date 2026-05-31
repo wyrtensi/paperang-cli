@@ -22,6 +22,8 @@ TARGET_PATHS = {
     "codex": Path(".codex") / "skills" / SKILL_NAME,
     "claude": Path(".claude") / "skills" / SKILL_NAME,
     "copilot": Path(".copilot") / "skills" / SKILL_NAME,
+    "cursor": Path(".cursor") / "skills" / SKILL_NAME,
+    "antigravity": Path(".gemini") / "antigravity" / "skills" / SKILL_NAME,
     "agents": Path(".agents") / "skills" / SKILL_NAME,
 }
 DEFAULT_REF = "main"
@@ -68,13 +70,13 @@ def download_remote_skill(destination: Path, base_url: str) -> Path:
 
 
 def local_skill_path(repo_root: Path) -> Path:
-    """Return the canonical skill directory inside a repository checkout."""
-    return repo_root / ".agents" / "skills" / SKILL_NAME
+    """Return the distributable skill directory inside a repository checkout."""
+    return repo_root / "skills" / SKILL_NAME
 
 
 def github_skill_url(ref: str) -> str:
-    """Return the raw GitHub URL for the canonical skill directory."""
-    return f"{RAW_BASE_URL}/{quote(ref, safe='')}/.agents/skills/{SKILL_NAME}"
+    """Return the raw GitHub URL for the distributable skill directory."""
+    return f"{RAW_BASE_URL}/{quote(ref, safe='')}/skills/{SKILL_NAME}"
 
 
 def default_repo_root() -> Path:

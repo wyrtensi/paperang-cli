@@ -35,6 +35,8 @@ def test_target_directories_cover_supported_clients(tmp_path):
         tmp_path / ".codex" / "skills" / "paperang-cli",
         tmp_path / ".claude" / "skills" / "paperang-cli",
         tmp_path / ".copilot" / "skills" / "paperang-cli",
+        tmp_path / ".cursor" / "skills" / "paperang-cli",
+        tmp_path / ".gemini" / "antigravity" / "skills" / "paperang-cli",
         tmp_path / ".agents" / "skills" / "paperang-cli",
     ]
 
@@ -85,3 +87,11 @@ def test_download_remote_skill_fetches_fixed_file_set(tmp_path):
         for path in destination.rglob("*")
         if path.is_file()
     ) == sorted(installer.SKILL_FILES)
+
+
+def test_github_download_uses_visible_distribution_skill_path():
+    installer = load_installer()
+
+    assert installer.github_skill_url("main") == (
+        "https://raw.githubusercontent.com/wyrtensi/paperang-cli/main/skills/paperang-cli"
+    )

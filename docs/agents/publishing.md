@@ -94,8 +94,32 @@ git push -u origin main
 - wheel and sdist builds
 - `twine check`
 - wheel-content verification
+- Agent Skill validation, mirror synchronization checks, and fallback-installer tests
 
 Real BLE communication and physical printing have been tested only on Windows. CI on Linux and macOS does not change that hardware-support statement.
+
+### Agent Skill
+
+The public distributable Agent Skill lives at `skills/paperang-cli/`. A byte-identical copy lives at `.agents/skills/paperang-cli/` so compatible agents can discover it automatically while working inside the repository.
+
+Validate both copies and the fallback installer before pushing:
+
+```powershell
+python scripts/check-agent-skill.py
+python -m pytest -q tests/test_install_agent_skill.py tests/test_check_agent_skill.py
+gh skill publish skills --dry-run
+```
+
+Preview and install the public copy through GitHub CLI `2.90.0` or newer:
+
+```powershell
+gh skill preview wyrtensi/paperang-cli paperang-cli
+gh skill install wyrtensi/paperang-cli paperang-cli --agent cursor --scope user
+gh skill install wyrtensi/paperang-cli paperang-cli --agent antigravity --scope user
+gh skill update paperang-cli --dry-run
+```
+
+Do not create a separate Agent Skill release from this repository. Application release tags snapshot the matching skill automatically, so Python, npm, and Agent Skill versions remain aligned.
 
 ### PyPI Publish
 

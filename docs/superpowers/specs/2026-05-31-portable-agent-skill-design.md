@@ -31,13 +31,17 @@ The reference files are synchronized copies of the canonical repository contract
 
 Prefer GitHub CLI `2.90.0+` for preview, provenance-aware installation, updates, and host-specific placement across its supported editor and coding-agent list.
 
-Add `scripts/install-agent-skill.py` as a transparent cross-platform fallback. It installs the canonical skill into one or more common personal skill locations:
+Keep a byte-identical distributable mirror at `skills/paperang-cli/` so GitHub CLI preview, install, update, and publish flows use the standard visible skill convention.
+
+Add `scripts/install-agent-skill.py` as a transparent cross-platform fallback. It installs the distributable skill into one or more common personal skill locations:
 
 | Target | Destination |
 | --- | --- |
 | `codex` | `~/.codex/skills/paperang-cli` |
 | `claude` | `~/.claude/skills/paperang-cli` |
 | `copilot` | `~/.copilot/skills/paperang-cli` |
+| `cursor` | `~/.cursor/skills/paperang-cli` |
+| `antigravity` | `~/.gemini/antigravity/skills/paperang-cli` |
 | `agents` | `~/.agents/skills/paperang-cli` |
 | `all` | all destinations above |
 
@@ -71,4 +75,5 @@ Extend CI to:
 
 - validate skill frontmatter
 - prove bundled reference copies match `docs/agents/`
+- prove the public distribution mirror matches `.agents/skills/`
 - run installer tests

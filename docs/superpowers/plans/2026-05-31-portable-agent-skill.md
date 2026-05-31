@@ -4,7 +4,7 @@
 
 **Goal:** Add a self-contained cross-platform `paperang-cli` Agent Skill and a portable installer.
 
-**Architecture:** Store one canonical skill under `.agents/skills/paperang-cli`. Install personal copies with a Python script that copies local files or downloads a fixed remote allowlist.
+**Architecture:** Store a repository-local skill under `.agents/skills/paperang-cli` and a checked byte-identical public distribution mirror under `skills/paperang-cli`. Install personal copies with GitHub CLI or a Python fallback that copies local files or downloads a fixed remote allowlist.
 
 **Tech Stack:** Markdown, YAML, JSON, Python standard library, pytest, GitHub Actions
 
