@@ -18,7 +18,12 @@ npm install --global paperang-cli
 paperang --help
 ```
 
-The wrapper runs a `postinstall` lifecycle script that installs the matching `paperang-cli` version from PyPI during npm installation. It retries with `--user` if the first pip installation fails.
+The wrapper runs a `postinstall` lifecycle script that installs the matching
+`paperang-cli` version from PyPI during npm installation. It first installs or
+updates dependencies, then reinstalls only the top-level Python package with
+`--force-reinstall --no-deps`. This replaces same-version editable
+installations without reinstalling heavy runtime dependencies. The complete
+sequence retries with `--user` if the first install scope fails.
 
 To inspect the wrapper before allowing lifecycle scripts to run:
 

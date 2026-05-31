@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.1.5",
+  "package_version": "0.1.6",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",

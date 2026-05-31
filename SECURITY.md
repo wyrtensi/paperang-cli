@@ -43,9 +43,12 @@ The postinstall script:
 
 1. finds a compatible Python installation
 2. runs `python -m pip install --upgrade paperang-cli==<matching-version>`
-3. retries with `--user` if the first pip installation fails
+3. runs `python -m pip install --force-reinstall --no-deps paperang-cli==<matching-version>`
+4. retries the complete sequence with `--user` if the first install scope fails
 
 This means that `npm install --global paperang-cli` also downloads and installs the matching Python package and its runtime dependencies from PyPI.
+The second pip command replaces same-version editable installations with the
+published wheel without reinstalling heavy runtime dependencies.
 
 To inspect the npm wrapper before allowing lifecycle scripts to run:
 

@@ -84,6 +84,9 @@ jobs:
           ).close()
           print(f"paperang-cli=={wrapper_version} is available on PyPI.")
 
+      - name: Verify editable Python install replacement
+        run: python scripts/check-npm-editable-reinstall.py
+
       - name: Install npm metadata
         working-directory: npm
         run: npm ci --ignore-scripts

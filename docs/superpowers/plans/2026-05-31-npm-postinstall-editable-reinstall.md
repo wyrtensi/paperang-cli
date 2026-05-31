@@ -103,6 +103,7 @@ Expected: PASS.
 
 **Files:**
 - Create: `scripts/check-npm-editable-reinstall.py`
+- Modify: `.github/workflows/npm-publish.yml`
 - Modify: `docs/agents/publishing.md`
 
 - [ ] **Step 1: Add the release-validation script**
@@ -131,7 +132,13 @@ python scripts/check-npm-editable-reinstall.py
 Explain that the command verifies replacement of a same-version editable
 installation with the published wheel.
 
-- [ ] **Step 3: Verify the release-validation script against the current published wheel**
+- [ ] **Step 3: Add the automated npm publish gate**
+
+Run `python scripts/check-npm-editable-reinstall.py` in
+`.github/workflows/npm-publish.yml` after confirming the matching PyPI wheel
+exists and before publishing the npm wrapper.
+
+- [ ] **Step 4: Verify the release-validation script against the current published wheel**
 
 Run: `python scripts/check-npm-editable-reinstall.py --package-version 0.1.5`
 

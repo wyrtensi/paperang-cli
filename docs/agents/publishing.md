@@ -141,6 +141,21 @@ The workflow:
 
 Only the publish job receives `id-token: write`.
 
+After PyPI publishes a release and before publishing the matching npm wrapper,
+verify that the npm install flow replaces a same-version editable Python
+installation with the published wheel:
+
+```powershell
+python scripts/check-npm-editable-reinstall.py
+```
+
+Before the next release exists on PyPI, validate the script itself against an
+already-published version:
+
+```powershell
+python scripts/check-npm-editable-reinstall.py --package-version 0.1.5
+```
+
 ## Create The GitHub Environment
 
 Create the environment after the repository has its first pushed commit:
@@ -265,6 +280,11 @@ The wrapper:
 - uses package name `paperang-cli`
 - exposes `paperang` and `paperang-cli` executable shims
 - installs the matching `paperang-cli==<version>` Python package from PyPI
+- reinstalls only the top-level Python package with `--force-reinstall --no-deps`
+  so same-version editable installs are replaced without reinstalling heavy
+  dependencies
+- verifies editable-install replacement against the published PyPI wheel before
+  npm publication
 - keeps `package.json.repository.url` exactly aligned with `https://github.com/wyrtensi/paperang-cli.git`
 - tests the npm package with `npm test` and `npm pack --dry-run`
 - publishes only after the matching PyPI version exists

@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawnSync } = require("node:child_process");
-
 const {
   findPython,
   getMinimumPythonVersion,
   getPythonPackageSpec
 } = require("../lib/python-launcher");
+const { runPipInstall } = require("../lib/python-installer");
 
 const candidate = findPython();
 const packageSpec = getPythonPackageSpec();
@@ -18,19 +17,11 @@ if (!candidate) {
   process.exit(1);
 }
 
-function runPip(extraArgs) {
-  return spawnSync(
-    candidate.command,
-    [...candidate.args, "-m", "pip", "install", "--upgrade", ...extraArgs, packageSpec],
-    { stdio: "inherit", windowsHide: true }
-  );
-}
-
-let result = runPip([]);
+let result = runPipInstall(candidate, packageSpec);
 
 if (result.status !== 0) {
   console.warn("Global pip install failed; retrying with --user.");
-  result = runPip(["--user"]);
+  result = runPipInstall(candidate, packageSpec, ["--user"]);
 }
 
 if (result.status !== 0) {

@@ -9,6 +9,7 @@ const {
   getPythonCandidates,
   getPythonPackageSpec
 } = require("../lib/python-launcher");
+const { buildPipInstallArgs } = require("../lib/python-installer");
 
 test("Windows prefers the py launcher", () => {
   assert.deepEqual(getPythonCandidates("win32"), [
@@ -39,5 +40,23 @@ test("launcher forwards CLI arguments through the Python module", () => {
       command: "py",
       args: ["-3", "-m", "paperang_cli", "--json", "config", "show"]
     }
+  );
+});
+
+test("pip install sequence replaces same-version editable installs", () => {
+  assert.deepEqual(
+    buildPipInstallArgs("paperang-cli==0.1.5", ["--user"]),
+    [
+      ["-m", "pip", "install", "--upgrade", "--user", "paperang-cli==0.1.5"],
+      [
+        "-m",
+        "pip",
+        "install",
+        "--force-reinstall",
+        "--no-deps",
+        "--user",
+        "paperang-cli==0.1.5"
+      ]
+    ]
   );
 });
