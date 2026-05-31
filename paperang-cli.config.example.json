@@ -1,0 +1,12 @@
+{
+  "model": "paperang_p1",
+  "macaddress": "04:7F:0E:3A:4F:31",
+  "printerwidth": 384,
+  "print_density": 75,
+  "post_print_feed_mm": 5.0,
+  "discovery_names": [
+    "MiaoMiaoJi",
+    "Paperang",
+    "Paperang_P2S"
+  ]
+}
