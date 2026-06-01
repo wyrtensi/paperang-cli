@@ -46,7 +46,10 @@ def test_target_directories_cover_supported_clients(tmp_path):
         tmp_path / ".claude" / "skills" / "paperang-cli",
         tmp_path / ".copilot" / "skills" / "paperang-cli",
         tmp_path / ".cursor" / "skills" / "paperang-cli",
+        tmp_path / ".windsurf" / "skills" / "paperang-cli",
+        tmp_path / ".config" / "opencode" / "skills" / "paperang-cli",
         tmp_path / ".gemini" / "antigravity" / "skills" / "paperang-cli",
+        tmp_path / ".gemini" / "skills" / "paperang-cli",
         tmp_path / ".agents" / "skills" / "paperang-cli",
     ]
 
@@ -60,6 +63,20 @@ def test_install_local_copies_skill_files(tmp_path):
     assert destinations == [tmp_path / "home" / ".codex" / "skills" / "paperang-cli"]
     assert (destinations[0] / "SKILL.md").read_text(encoding="utf-8").startswith("---")
     assert (destinations[0] / "references" / "cli-contract.json").read_text(encoding="utf-8") == "{}\n"
+
+
+def test_install_local_all_copies_skill_to_every_supported_client(tmp_path):
+    installer = load_installer()
+    source = create_source(tmp_path)
+
+    destinations = installer.install_skill(source, tmp_path / "home", "all", force=False)
+
+    assert destinations == installer.target_directories(tmp_path / "home", "all")
+    assert len(destinations) == 9
+    for destination in destinations:
+        assert (destination / "SKILL.md").read_text(encoding="utf-8").startswith("---")
+        assert (destination / "examples" / "address-label.json").is_file()
+        assert (destination / "references" / "cli-contract.json").is_file()
 
 
 def test_install_local_refuses_to_overwrite_existing_skill(tmp_path):

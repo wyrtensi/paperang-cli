@@ -32,7 +32,10 @@ TARGET_PATHS = {
     "claude": Path(".claude") / "skills" / SKILL_NAME,
     "copilot": Path(".copilot") / "skills" / SKILL_NAME,
     "cursor": Path(".cursor") / "skills" / SKILL_NAME,
+    "windsurf": Path(".windsurf") / "skills" / SKILL_NAME,
+    "opencode": Path(".config") / "opencode" / "skills" / SKILL_NAME,
     "antigravity": Path(".gemini") / "antigravity" / "skills" / SKILL_NAME,
+    "gemini": Path(".gemini") / "skills" / SKILL_NAME,
     "agents": Path(".agents") / "skills" / SKILL_NAME,
 }
 DEFAULT_REF = "main"

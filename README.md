@@ -122,7 +122,7 @@ Install directly from GitHub on Linux or macOS:
 curl -fsSL https://raw.githubusercontent.com/wyrtensi/paperang-cli/main/scripts/install-agent-skill.py | python3 - --source github --target all
 ```
 
-Use `--target codex`, `--target claude`, `--target copilot`, `--target cursor`, `--target antigravity`, or `--target agents` to install only one personal copy. Existing copies are preserved unless `--force` is provided. Restart the agent client after installation.
+Use `--target codex`, `--target claude`, `--target copilot`, `--target cursor`, `--target windsurf`, `--target opencode`, `--target antigravity`, `--target gemini`, or `--target agents` to install only one personal copy. `--target all` installs the complete skill directory into all nine personal locations, even when a matching editor is not currently installed. Existing copies are preserved unless `--force` is provided. Restart the agent client after installation.
 
 You can also ask an agent:
 

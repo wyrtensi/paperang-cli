@@ -41,7 +41,10 @@ Add `scripts/install-agent-skill.py` as a transparent cross-platform fallback. I
 | `claude` | `~/.claude/skills/paperang-cli` |
 | `copilot` | `~/.copilot/skills/paperang-cli` |
 | `cursor` | `~/.cursor/skills/paperang-cli` |
+| `windsurf` | `~/.windsurf/skills/paperang-cli` |
+| `opencode` | `~/.config/opencode/skills/paperang-cli` |
 | `antigravity` | `~/.gemini/antigravity/skills/paperang-cli` |
+| `gemini` | `~/.gemini/skills/paperang-cli` |
 | `agents` | `~/.agents/skills/paperang-cli` |
 | `all` | all destinations above |
 
