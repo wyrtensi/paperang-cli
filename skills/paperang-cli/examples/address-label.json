@@ -1,0 +1,8 @@
+{
+  "preset": "address-label",
+  "paragraph": {
+    "max_length_mm": 75.0,
+    "overflow_policy": "shrink-to-fit",
+    "break_long_words": false
+  }
+}

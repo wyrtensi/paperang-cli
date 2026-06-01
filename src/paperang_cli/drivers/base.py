@@ -49,6 +49,8 @@ class PrinterDriver(ABC):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        font_fit: str | None = None,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         raise NotImplementedError
@@ -64,6 +66,7 @@ class PrinterDriver(ABC):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         raise NotImplementedError
@@ -81,6 +84,9 @@ class PrinterDriver(ABC):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        min_font_size: int | None = None,
+        font_fit: str | None = None,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         raise NotImplementedError

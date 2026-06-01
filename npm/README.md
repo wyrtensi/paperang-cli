@@ -34,4 +34,14 @@ python -m pip install --upgrade paperang-cli
 
 Real Bluetooth Low Energy communication and physical printing have been tested only on Windows. CI compatibility checks on Linux and macOS do not prove hardware behavior on those platforms.
 
+The npm wrapper exposes the same smart-layout CLI surface as the Python package, including `--style-json` for preset-driven dry-runs and length-aware layout checks.
+
+Example:
+
+```powershell
+paperang --json print paragraph "221B Baker Street London" --dry-run --style-json .\address-label.json
+```
+
+See the main repository command reference for ready-to-copy JSON payloads for address labels, long logo strips, and composed badge layouts.
+
 See the [main repository](https://github.com/wyrtensi/paperang-cli) and its [security policy](https://github.com/wyrtensi/paperang-cli/blob/main/SECURITY.md) for usage, safety notes, and documentation.

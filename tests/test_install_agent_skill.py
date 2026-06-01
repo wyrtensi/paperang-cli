@@ -20,9 +20,19 @@ def load_installer():
 def create_source(tmp_path: Path) -> Path:
     source = tmp_path / "source"
     (source / "agents").mkdir(parents=True)
+    (source / "examples").mkdir()
     (source / "references").mkdir()
     (source / "SKILL.md").write_text("---\nname: paperang-cli\ndescription: test\n---\n", encoding="utf-8")
     (source / "agents" / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
+    (source / "examples" / "address-label.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "fridge-note.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "chore-list.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "pantry-label.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "cable-tag.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "storage-bin.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "receipt-note.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "logo-strip.json").write_text("{}\n", encoding="utf-8")
+    (source / "examples" / "product-style.json").write_text("{}\n", encoding="utf-8")
     (source / "references" / "cli-contract.md").write_text("contract\n", encoding="utf-8")
     (source / "references" / "cli-contract.json").write_text("{}\n", encoding="utf-8")
     return source
@@ -94,4 +104,24 @@ def test_github_download_uses_visible_distribution_skill_path():
 
     assert installer.github_skill_url("main") == (
         "https://raw.githubusercontent.com/wyrtensi/paperang-cli/main/skills/paperang-cli"
+    )
+
+
+def test_skill_file_allowlist_includes_scenario_examples():
+    installer = load_installer()
+
+    assert installer.SKILL_FILES == (
+        "SKILL.md",
+        "agents/openai.yaml",
+        "examples/address-label.json",
+        "examples/fridge-note.json",
+        "examples/chore-list.json",
+        "examples/pantry-label.json",
+        "examples/cable-tag.json",
+        "examples/storage-bin.json",
+        "examples/receipt-note.json",
+        "examples/logo-strip.json",
+        "examples/product-style.json",
+        "references/cli-contract.md",
+        "references/cli-contract.json",
     )

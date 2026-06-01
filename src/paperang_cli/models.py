@@ -95,6 +95,9 @@ class PrintResult:
     conversion: str | None = None
     layout: str | None = None
     battery_after: int | None = None
+    estimated_length_mm: float | None = None
+    max_length_mm: float | None = None
+    fits_length_limit: bool | None = None
     warning: str | None = None
     styling: dict[str, Any] | None = None
 

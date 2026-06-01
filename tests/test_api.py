@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from PIL import Image
 
@@ -88,6 +89,7 @@ def test_api_print_paragraph_delegates_to_driver(monkeypatch, fake_driver):
         font_size=20,
         font_family="mono",
         min_font_size=18,
+        font_fit="largest-fitting",
         autofit=True,
         orientation="rotate-90-cw",
         dry_run=True,
@@ -99,6 +101,7 @@ def test_api_print_paragraph_delegates_to_driver(monkeypatch, fake_driver):
     assert fake_driver.calls[-1][1]["font_size"] == 20
     assert fake_driver.calls[-1][1]["font_family"] == "mono"
     assert fake_driver.calls[-1][1]["min_font_size"] == 18
+    assert fake_driver.calls[-1][1]["font_fit"] == "largest-fitting"
     assert fake_driver.calls[-1][1]["autofit"] is True
     assert fake_driver.calls[-1][1]["orientation"] == "rotate-90-cw"
 
@@ -128,6 +131,8 @@ def test_api_print_compose_resolves_mode_and_layout(monkeypatch, fake_driver, tm
         "hello label",
         image_path,
         layout="image-above",
+        min_font_size=14,
+        font_fit="largest-fitting",
         mode="photo",
         dry_run=True,
     )
@@ -135,6 +140,8 @@ def test_api_print_compose_resolves_mode_and_layout(monkeypatch, fake_driver, tm
     assert result.operation == "compose"
     assert fake_driver.calls[-1][0] == "print_compose"
     assert fake_driver.calls[-1][1]["layout"] == "image-above"
+    assert fake_driver.calls[-1][1]["min_font_size"] == 14
+    assert fake_driver.calls[-1][1]["font_fit"] == "largest-fitting"
     assert fake_driver.calls[-1][1]["mode"] == "photo"
     assert fake_driver.calls[-1][1]["conversion"] == "dither"
 
@@ -147,3 +154,14 @@ def test_api_bt_mac_alias_delegates(monkeypatch, fake_driver):
 
     assert result.bluetooth_mac == "AA:BB:CC:DD:EE:FF"
     assert fake_driver.calls[-1][0] == "bluetooth_mac"
+
+
+def test_readme_and_p1_api_docs_cover_font_fit_surface():
+    repo_root = Path(__file__).resolve().parents[1]
+    readme_text = (repo_root / "README.md").read_text(encoding="utf-8")
+    api_docs = (repo_root / "docs" / "usage" / "p1-api.md").read_text(encoding="utf-8")
+
+    assert "font-fit" in readme_text
+    assert "font_fit=" in api_docs
+    assert "feed_mm=" in api_docs
+    assert "print_compose()" in api_docs and "font_fit=" in api_docs

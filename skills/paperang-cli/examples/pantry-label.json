@@ -1,0 +1,8 @@
+{
+  "preset": "pantry-label",
+  "paragraph": {
+    "max_length_mm": 65.0,
+    "overflow_policy": "shrink-to-fit",
+    "break_long_words": false
+  }
+}

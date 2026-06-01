@@ -1,0 +1,7 @@
+{
+  "preset": "logo-strip",
+  "image": {
+    "fit_mode": "fit-within-length",
+    "max_length_mm": 70.0
+  }
+}

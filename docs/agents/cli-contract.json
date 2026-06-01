@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.1.6",
+  "package_version": "0.1.7",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
@@ -48,6 +48,25 @@
     "linux_and_macos_with_xdg": "$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json",
     "linux_and_macos_fallback": "~/.config/paperang-cli/paperang-cli.config.json"
   },
+  "agent_style_selection_policy": {
+    "scenarios_are_starting_points": true,
+    "selection_order": [
+      "nearest built-in scenario or shipped example",
+      "temporary per-invocation style-json override of that base",
+      "temporary style-json built from existing public controls"
+    ],
+    "persistent_print_defaults_update_requires_explicit_user_request": true,
+    "break_long_words_requires_explicit_user_request": true,
+    "whole_word_default_guidance": "Keep break_long_words false unless the user explicitly asks for character-level splitting.",
+    "human_first_bias": {
+      "labels_and_tags": "Prefer quick recognition, larger text, and low visual clutter; font_fit=largest-fitting is often the best starting point.",
+      "notes_and_lists": "Prefer ordinary whole-word wrapping and natural reading order over aggressive fitting or character-level splitting.",
+      "compose": "Prefer the layout and text sizing that best communicates the primary content at a glance."
+    },
+    "expected_paper_explanation": "Describe expected paper appearance in human terms and use estimated_length_mm, max_length_mm, and fits_length_limit when present.",
+    "rotated_length_calibration": "For rotate-90-cw and rotate-90-ccw text and image jobs, estimated_length_mm and max_length_mm planning use printable_width_mm when available. Ordinary orientation jobs and ordinary compose continue to use advance_mm_per_px.",
+    "response_language": "Answer in the user's language when clear; otherwise follow higher-priority environment instructions."
+  },
   "global_options": [
     {
       "name": "--config",
@@ -90,7 +109,7 @@
   "safety_policy": {
     "explicit_user_request_required_for_paper_use": true,
     "successful_matching_dry_run_required_before_real_print": true,
-    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
+    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, style-json payload, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
     "report_dry_run_before_real_print": true,
     "imperative_request_authorizes_one_matching_non_self_test_real_print": true,
     "follow_up_real_print_approval_required_when_initial_request_is_exploratory_or_ambiguous": true,
@@ -104,10 +123,12 @@
     "safety_error_behavior": "Stop and report SAFETY_ERROR. Do not automatically add an allow flag or retry without explicit user approval.",
     "optional_parameters_do_not_bypass_safety": [
       "--font-size",
-      "--font-family",
       "--min-font-size",
+      "--font-fit",
+      "--font-family",
       "--autofit",
       "--orientation",
+      "--style-json",
       "--feed-mm",
       "--layout",
       "--mode",
@@ -146,7 +167,8 @@
           "selected orientation",
           "bitstream preparation",
           "font size",
-          "feed calculation"
+          "feed calculation",
+          "estimated length reporting when the active style carries a length budget"
         ],
         "does_not_validate": [
           "printer connectivity",
@@ -161,7 +183,8 @@
           "selected orientation",
           "bitstream preparation",
           "font size",
-          "feed calculation"
+          "feed calculation",
+          "estimated length reporting when the active style carries a length budget"
         ],
         "does_not_validate": [
           "printer connectivity",
@@ -175,7 +198,8 @@
           "selected conversion",
           "selected orientation",
           "bitstream preparation",
-          "feed calculation"
+          "feed calculation",
+          "estimated length reporting and length-fit validation when configured"
         ],
         "does_not_validate": [
           "printer connectivity",
@@ -189,7 +213,8 @@
           "local image loading",
           "selected layout and conversion",
           "combined bitstream preparation",
-          "feed calculation"
+          "feed calculation",
+          "estimated length reporting and length-limit evaluation when configured"
         ],
         "does_not_validate": [
           "printer connectivity",
@@ -381,6 +406,18 @@
       },
       "layout": {
         "type": "string",
+        "nullable": true
+      },
+      "estimated_length_mm": {
+        "type": "float",
+        "nullable": true
+      },
+      "max_length_mm": {
+        "type": "float",
+        "nullable": true
+      },
+      "fits_length_limit": {
+        "type": "bool",
         "nullable": true
       },
       "battery_after": {
@@ -647,6 +684,16 @@
           "required": false
         },
         {
+          "name": "--font-fit",
+          "type": "choice",
+          "values": [
+            "manual",
+            "largest-fitting"
+          ],
+          "required": false,
+          "description": "Choose font sizing behavior. largest-fitting searches downward for the biggest fitting size and starts from an automatic ceiling when --font-size is omitted."
+        },
+        {
           "name": "--autofit",
           "type": "flag",
           "required": false
@@ -665,6 +712,12 @@
             "rotate-90-ccw"
           ],
           "required": false
+        },
+        {
+          "name": "--style-json",
+          "type": "string",
+          "required": false,
+          "description": "Path to a JSON style payload, or - to read JSON from stdin. The payload may select a preset and add operation-specific overrides."
         },
         {
           "name": "--feed-mm",
@@ -729,6 +782,16 @@
           "required": false
         },
         {
+          "name": "--font-fit",
+          "type": "choice",
+          "values": [
+            "manual",
+            "largest-fitting"
+          ],
+          "required": false,
+          "description": "Choose font sizing behavior. largest-fitting searches downward for the biggest fitting size and starts from an automatic ceiling when --font-size is omitted."
+        },
+        {
           "name": "--autofit",
           "type": "flag",
           "required": false
@@ -747,6 +810,12 @@
             "rotate-90-ccw"
           ],
           "required": false
+        },
+        {
+          "name": "--style-json",
+          "type": "string",
+          "required": false,
+          "description": "Path to a JSON style payload, or - to read JSON from stdin. The payload may select a preset and add operation-specific overrides."
         },
         {
           "name": "--feed-mm",
@@ -800,6 +869,12 @@
             "rotate-90-ccw"
           ],
           "required": false
+        },
+        {
+          "name": "--style-json",
+          "type": "string",
+          "required": false,
+          "description": "Path to a JSON style payload, or - to read JSON from stdin. The payload may select a preset and add operation-specific overrides."
         },
         {
           "name": "--feed-mm",
@@ -875,6 +950,27 @@
           "name": "--font-size",
           "type": "int",
           "required": false
+        },
+        {
+          "name": "--min-font-size",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "--font-fit",
+          "type": "choice",
+          "values": [
+            "manual",
+            "largest-fitting"
+          ],
+          "required": false,
+          "description": "Choose compose text sizing behavior. largest-fitting searches downward for the biggest fitting size and starts from an automatic ceiling when --font-size is omitted."
+        },
+        {
+          "name": "--style-json",
+          "type": "string",
+          "required": false,
+          "description": "Path to a JSON style payload, or - to read JSON from stdin. The payload may select a preset and add operation-specific overrides."
         },
         {
           "name": "--feed-mm",
@@ -1041,24 +1137,37 @@
       "paperang --json battery"
     ],
     "text": [
+      "choose the nearest scenario or example as a base when it fits; otherwise build a temporary style-json payload from existing public controls",
+      "keep break_long_words false unless the user explicitly asks for character-level splitting",
       "paperang --json print text \"hello\" --dry-run",
-      "report the dry-run result; ask for follow-up approval only if the current request was exploratory or ambiguous",
+      "when font-fit is largest-fitting, keep the same --font-fit, --min-font-size, and any font_size omission between dry-run and real print",
+      "when using presets or structured overrides, keep the same --style-json payload between dry-run and real print",
+      "report the dry-run result in human terms, including expected paper length when the result exposes it; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print text \"hello\" --allow-paper-use"
     ],
     "paragraph": [
+      "choose the nearest scenario or example as a base when it fits; otherwise build a temporary style-json payload from existing public controls",
+      "keep break_long_words false unless the user explicitly asks for character-level splitting",
       "paperang --json print paragraph \"hello\" --dry-run",
-      "report the dry-run result; ask for follow-up approval only if the current request was exploratory or ambiguous",
+      "when font-fit is largest-fitting, keep the same --font-fit, --min-font-size, and any font_size omission between dry-run and real print",
+      "when using presets or structured overrides, keep the same --style-json payload between dry-run and real print",
+      "report the dry-run result in human terms, including expected paper length when the result exposes it; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print paragraph \"hello\" --allow-paper-use"
     ],
     "image": [
       "paperang --json print image \".\\sample.png\" --dry-run --mode sticker",
+      "when a preset or structured override controls orientation or length fitting, use the matching --style-json payload for both dry-run and real print",
       "report experimental physical quality; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print image \".\\sample.png\" --allow-paper-use --mode sticker",
       "request manual physical-quality validation before repeated automation"
     ],
     "compose": [
+      "choose the nearest scenario or example as a base when it fits; otherwise build a temporary style-json payload from existing public controls",
+      "keep break_long_words false unless the user explicitly asks for character-level splitting in the text section",
       "paperang --json print compose \"label\" \".\\sample.png\" --dry-run --mode sticker",
-      "report experimental physical quality; ask for follow-up approval only if the current request was exploratory or ambiguous",
+      "when font-fit is largest-fitting, keep the same --font-fit, --min-font-size, and any font_size omission between dry-run and real print",
+      "when layout or length handling is JSON-driven, keep the same --style-json payload for both dry-run and real print",
+      "report experimental physical quality and expected paper appearance in human terms; ask for follow-up approval only if the current request was exploratory or ambiguous",
       "paperang --json print compose \"label\" \".\\sample.png\" --allow-paper-use --mode sticker",
       "request manual physical-layout validation before repeated automation"
     ],

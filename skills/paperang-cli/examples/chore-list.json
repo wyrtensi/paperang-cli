@@ -1,0 +1,12 @@
+{
+  "preset": "chore-list",
+  "paragraph": {
+    "font_size": null,
+    "min_font_size": 14,
+    "font_fit": "largest-fitting",
+    "max_length_mm": 140.0,
+    "line_spacing_px": 4,
+    "overflow_policy": "shrink-to-fit",
+    "break_long_words": false
+  }
+}

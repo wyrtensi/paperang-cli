@@ -1,0 +1,13 @@
+{
+  "compose": {
+    "font_family": "mono",
+    "font_size": null,
+    "min_font_size": 14,
+    "font_fit": "largest-fitting",
+    "layout": "image-above",
+    "image_mode": "photo",
+    "max_length_mm": 55.0,
+    "overflow_policy": "report-only",
+    "break_long_words": false
+  }
+}

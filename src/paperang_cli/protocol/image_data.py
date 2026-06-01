@@ -76,7 +76,27 @@ def _text_size(draw, text, font):
     return bbox[2] - bbox[0], bbox[3] - bbox[1], bbox
 
 
-def _wrap_text(draw, text, font, max_width):
+def _split_word_to_width(draw, word, font, max_width):
+    pieces = []
+    remaining = word
+
+    while remaining:
+        split_index = 1
+        while split_index <= len(remaining):
+            candidate = remaining[:split_index]
+            candidate_width, _, _ = _text_size(draw, candidate, font)
+            if candidate_width > max_width:
+                break
+            split_index += 1
+
+        fitted = remaining[: max(1, split_index - 1)]
+        pieces.append(fitted)
+        remaining = remaining[len(fitted):]
+
+    return pieces
+
+
+def _wrap_text(draw, text, font, max_width, break_long_words=False):
     paragraphs = text.splitlines() or [text]
     wrapped_lines = []
 
@@ -87,7 +107,22 @@ def _wrap_text(draw, text, font, max_width):
             continue
 
         current_line = words[0]
+        if break_long_words:
+            current_width, _, _ = _text_size(draw, current_line, font)
+            if current_width > max_width:
+                wrapped_lines.extend(_split_word_to_width(draw, current_line, font, max_width))
+                current_line = ""
+
         for word in words[1:]:
+            if not current_line:
+                if break_long_words:
+                    word_width, _, _ = _text_size(draw, word, font)
+                    if word_width > max_width:
+                        wrapped_lines.extend(_split_word_to_width(draw, word, font, max_width))
+                        continue
+                current_line = word
+                continue
+
             candidate = f"{current_line} {word}"
             candidate_width, _, _ = _text_size(draw, candidate, font)
             if candidate_width <= max_width:
@@ -95,9 +130,16 @@ def _wrap_text(draw, text, font, max_width):
                 continue
 
             wrapped_lines.append(current_line)
+            if break_long_words:
+                word_width, _, _ = _text_size(draw, word, font)
+                if word_width > max_width:
+                    wrapped_lines.extend(_split_word_to_width(draw, word, font, max_width))
+                    current_line = ""
+                    continue
             current_line = word
 
-        wrapped_lines.append(current_line)
+        if current_line:
+            wrapped_lines.append(current_line)
 
     return wrapped_lines or [""]
 

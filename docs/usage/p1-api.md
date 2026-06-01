@@ -121,10 +121,10 @@ If an operation returns a concrete printer address, the facade caches it for lat
 | `get_battery()` | `BatteryStatus` | Non-printing battery-only query; accepts optional `address=` |
 | `get_bluetooth_mac()` | `BluetoothMacStatus` | Non-printing printer-reported Bluetooth MAC query; accepts optional `address=` |
 | `get_bt_mac()` | `BluetoothMacStatus` | Compatibility alias for `get_bluetooth_mac()`; accepts optional `address=` |
-| `print_text()` | `PrintResult` | Short text print path; accepts optional `address=`, `font_family=`, `min_font_size=`, `autofit=`, and `orientation=` |
-| `print_paragraph()` | `PrintResult` | Wrapped paragraph print path; accepts optional `address=`, `font_family=`, `min_font_size=`, `autofit=`, and `orientation=` |
+| `print_text()` | `PrintResult` | Short text print path; accepts optional `address=`, `font_size=`, `font_family=`, `min_font_size=`, `font_fit=`, `autofit=`, `orientation=`, and `feed_mm=` |
+| `print_paragraph()` | `PrintResult` | Wrapped paragraph print path; accepts optional `address=`, `font_size=`, `font_family=`, `min_font_size=`, `font_fit=`, `autofit=`, `orientation=`, and `feed_mm=` |
 | `print_image()` | `PrintResult` | Image print path with `mode` or `conversion` normalization plus optional `orientation=`; accepts optional `address=` |
-| `print_compose()` | `PrintResult` | Combined text-plus-image print path; accepts optional `address=` |
+| `print_compose()` | `PrintResult` | Combined text-plus-image print path; accepts optional `address=`, `layout=`, `font_size=`, `min_font_size=`, `font_fit=`, `mode=`, `conversion=`, and `feed_mm=` |
 | `print_self_test()` | `PrintResult` | Built-in self-test with the existing large-paper warning; accepts optional `address=` |
 
 The return types are the same dataclasses used by the CLI and driver layers.
@@ -158,6 +158,10 @@ Resolution order for one styling field is:
 Dry-run and real-print `PrintResult` values now include a `styling` object when the driver resolved styling information for that job. For example, rotated text dry-runs report the resolved orientation, generic font family, final font size, and whether autofit actually changed the chosen font size.
 
 Ordinary compose jobs can inherit config defaults such as `layout`, `font_size`, `image_mode`, and `image_conversion`, but rotated compose rendering is still unavailable.
+
+For human-first wrappers or agents built on top of `PaperangP1`, prefer per-call arguments for one-off jobs and reserve config-backed `print_defaults` for explicit long-term preferences. As with the CLI, whole-word wrapping with `break_long_words=False` is the normal baseline, while `font_fit="largest-fitting"` is often the better choice for labels and other glance-first output.
+
+When a dry-run returns `estimated_length_mm`, `max_length_mm`, or `fits_length_limit`, surface those values directly so the caller can describe the expected paper result in human terms instead of inventing a separate estimate.
 
 ## Configuration Example
 

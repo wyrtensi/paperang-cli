@@ -16,7 +16,7 @@ P1_API_CONTRACT = {
     "model": "paperang_p1",
     "transport": "ble",
     "config_loading": {
-        "default_behavior": "The constructor uses built-in defaults unless config_path is provided. A config file can also provide nested print_defaults for text, paragraph, image, and compose styling.",
+        "default_behavior": "The constructor uses built-in defaults unless config_path is provided. A config file can also provide calibration, nested print_defaults for text, paragraph, image, and compose styling, and custom preset entries.",
         "config_path_supported": True,
     },
     "constructor_options": [
@@ -154,10 +154,14 @@ P1_API_CONTRACT = {
     },
     "styling_support": {
         "config_defaults": "Nested print_defaults values can define default styling for text, paragraph, image, and compose jobs.",
+        "preset_catalog_available": True,
+        "cli_style_json_support": True,
+        "python_api_style_json_support": False,
         "generic_font_families": ["sans", "mono", "serif"],
         "orientations": ["normal", "rotate-90-cw", "rotate-90-ccw"],
         "rotated_methods": ["print_text", "print_paragraph", "print_image"],
         "rotated_compose_supported": False,
+        "length_metrics": ["estimated_length_mm", "max_length_mm", "fits_length_limit"],
         "print_result_field": "PrintResult.styling",
     },
     "unsupported_parity_gaps": [
@@ -260,10 +264,14 @@ def format_api_contract_human_lines(api_name: str) -> list[str]:
         styling = contract["styling_support"]
         lines.append("Styling support:")
         lines.append(f"- Config defaults: {styling['config_defaults']}")
+        lines.append(f"- Preset catalog available: {styling['preset_catalog_available']}")
+        lines.append(f"- CLI style-json support: {styling['cli_style_json_support']}")
+        lines.append(f"- Python API style-json support: {styling['python_api_style_json_support']}")
         lines.append(f"- Font families: {', '.join(styling['generic_font_families'])}")
         lines.append(f"- Orientations: {', '.join(styling['orientations'])}")
         lines.append(f"- Rotated methods: {', '.join(styling['rotated_methods'])}")
         lines.append(f"- Rotated compose supported: {styling['rotated_compose_supported']}")
+        lines.append(f"- Length metrics: {', '.join(styling['length_metrics'])}")
         lines.append(f"- Resolved styling field: {styling['print_result_field']}")
     lines.append("Constructor options:")
     for option in contract["constructor_options"]:

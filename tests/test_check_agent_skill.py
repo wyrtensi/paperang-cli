@@ -31,3 +31,33 @@ def test_public_skill_mirror_matches_project_skill():
     checker = load_checker()
 
     checker.validate_public_skill_sync()
+
+
+def test_skill_bundle_includes_scenario_examples_and_guidance():
+    checker = load_checker()
+
+    checker.validate_scenario_examples()
+
+
+def test_skill_bundle_includes_home_life_scenarios():
+    checker = load_checker()
+
+    checker.validate_home_scenario_examples()
+
+
+def test_skill_bundle_includes_general_home_note_scenarios():
+    checker = load_checker()
+
+    checker.validate_general_home_scenario_examples()
+
+
+def test_skill_scenarios_are_recommended_not_mandatory():
+    checker = load_checker()
+
+    checker.validate_scenario_choice_flexibility()
+
+
+def test_skill_and_contract_dry_run_guidance_covers_font_fit():
+    checker = load_checker()
+
+    checker.validate_font_fit_guidance()

@@ -15,6 +15,15 @@ SKILL_NAME = "paperang-cli"
 SKILL_FILES = (
     "SKILL.md",
     "agents/openai.yaml",
+    "examples/address-label.json",
+    "examples/fridge-note.json",
+    "examples/chore-list.json",
+    "examples/pantry-label.json",
+    "examples/cable-tag.json",
+    "examples/storage-bin.json",
+    "examples/receipt-note.json",
+    "examples/logo-strip.json",
+    "examples/product-style.json",
     "references/cli-contract.md",
     "references/cli-contract.json",
 )

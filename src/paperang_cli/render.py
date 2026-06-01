@@ -13,6 +13,7 @@ from paperang_cli.protocol import image_data
 DEFAULT_TEXT_FONT_SIZE = 36
 DEFAULT_PARAGRAPH_FONT_SIZE = 24
 DEFAULT_COMPOSE_FONT_SIZE = 28
+AUTO_FIT_FONT_SIZE_CEILING = 96
 FEED_UNITS_PER_MM = 56
 MIN_AUTOFIT_FONT_SIZE = 8
 IMAGE_MODE_TO_CONVERSION = {
@@ -20,6 +21,8 @@ IMAGE_MODE_TO_CONVERSION = {
     "photo": "dither",
 }
 COMPOSE_LAYOUTS = {"text-above", "image-above"}
+IMAGE_FIT_MODES = {"fit-width", "fit-within-length"}
+FONT_FIT_MODES = {"manual", "largest-fitting"}
 ORIENTATION_ROTATIONS = {
     "normal": None,
     "rotate-90-cw": 270,
@@ -30,14 +33,21 @@ ORIENTATION_ROTATIONS = {
 @dataclass(slots=True)
 class RenderStyling:
     orientation: str = "normal"
+    layout: str | None = None
     font_family: str | None = None
     font_size: int | None = None
     min_font_size: int | None = None
+    font_fit: str | None = None
     autofit: bool | None = None
     autofit_applied: bool = False
     horizontal_padding_px: int | None = None
     vertical_padding_px: int | None = None
     line_spacing_px: int | None = None
+    spacer_height_px: int | None = None
+    max_length_mm: float | None = None
+    overflow_policy: str | None = None
+    fit_mode: str | None = None
+    break_long_words: bool | None = None
     mode: str | None = None
     conversion: str | None = None
 
@@ -51,6 +61,9 @@ class RenderedBitstream:
     width: int
     height: int
     styling: RenderStyling
+    estimated_length_mm: float | None = None
+    max_length_mm: float | None = None
+    fits_length_limit: bool | None = None
 
 
 def resolve_image_conversion(*, mode: str | None = None, conversion: str | None = None) -> str:
@@ -120,6 +133,7 @@ def _render_text_canvas(
     vertical_padding_px: int | None = None,
     line_spacing_px: int | None = None,
     wrap_to_printer_width: bool = True,
+    break_long_words: bool = False,
 ) -> Image.Image:
     horizontal_padding = horizontal_padding_px if horizontal_padding_px is not None else (12 if paragraph else 16)
     vertical_padding = vertical_padding_px if vertical_padding_px is not None else (10 if paragraph else 12)
@@ -130,7 +144,7 @@ def _render_text_canvas(
     probe_draw = ImageDraw.Draw(probe_image)
     if wrap_to_printer_width:
         max_text_width = max(1, printer_width - horizontal_padding * 2)
-        lines = image_data._wrap_text(probe_draw, message, font, max_text_width)
+        lines = image_data._wrap_text(probe_draw, message, font, max_text_width, break_long_words=break_long_words)
     else:
         lines = message.splitlines() or [message]
 
@@ -141,8 +155,6 @@ def _render_text_canvas(
     text_height = line_height * len(lines) + line_spacing * max(0, len(lines) - 1)
 
     image_width = max(text_width + horizontal_padding * 2, 1)
-    if wrap_to_printer_width:
-        image_width = min(printer_width, image_width)
 
     image_height = max(text_height + vertical_padding * 2, 1)
     text_image = Image.new("L", (image_width, image_height), 255)
@@ -209,14 +221,80 @@ def _finalize_canvas(canvas: Image.Image, *, printer_width: int, orientation: st
     return final_canvas
 
 
-def _rendered_bitstream(canvas: Image.Image, *, styling: RenderStyling) -> RenderedBitstream:
+def _length_mm_per_px(
+    *,
+    advance_mm_per_px: float,
+    orientation: str,
+    printer_width: int,
+    printable_width_mm: float | None,
+) -> float:
+    if advance_mm_per_px <= 0:
+        raise ValueError("advance_mm_per_px must be greater than zero")
+    if printable_width_mm is not None and printable_width_mm <= 0:
+        raise ValueError("printable_width_mm must be greater than zero")
+    if orientation in {"rotate-90-cw", "rotate-90-ccw"} and printable_width_mm is not None:
+        return printable_width_mm / printer_width
+    return advance_mm_per_px
+
+
+def _length_metrics(
+    *,
+    height_px: int,
+    advance_mm_per_px: float,
+    max_length_mm: float | None,
+    orientation: str = "normal",
+    printer_width: int = 384,
+    printable_width_mm: float | None = None,
+) -> tuple[float, bool | None]:
+    estimated_length_mm = round(
+        height_px
+        * _length_mm_per_px(
+            advance_mm_per_px=advance_mm_per_px,
+            orientation=orientation,
+            printer_width=printer_width,
+            printable_width_mm=printable_width_mm,
+        ),
+        4,
+    )
+    if max_length_mm is None:
+        return estimated_length_mm, None
+    return estimated_length_mm, estimated_length_mm <= max_length_mm
+
+
+def _rendered_bitstream(
+    canvas: Image.Image,
+    *,
+    styling: RenderStyling,
+    advance_mm_per_px: float = 0.1217,
+    max_length_mm: float | None = None,
+    printer_width: int = 384,
+    printable_width_mm: float | None = None,
+) -> RenderedBitstream:
     binary_image = (np.array(canvas) < 128).astype(int)
+    estimated_length_mm, fits_length_limit = _length_metrics(
+        height_px=canvas.height,
+        advance_mm_per_px=advance_mm_per_px,
+        max_length_mm=max_length_mm,
+        orientation=styling.orientation,
+        printer_width=printer_width,
+        printable_width_mm=printable_width_mm,
+    )
     return RenderedBitstream(
         bitstream=image_data.binimage2bitstream(binary_image),
         width=canvas.width,
         height=canvas.height,
         styling=styling,
+        estimated_length_mm=estimated_length_mm,
+        max_length_mm=max_length_mm,
+        fits_length_limit=fits_length_limit,
     )
+
+
+def _resolve_font_fit(font_fit: str | None) -> str:
+    resolved_font_fit = (font_fit or "manual").strip().lower()
+    if resolved_font_fit not in FONT_FIT_MODES:
+        raise ValueError(f"Unsupported font fit mode: {resolved_font_fit}")
+    return resolved_font_fit
 
 
 def render_text_job(
@@ -227,20 +305,37 @@ def render_text_job(
     font_size: int | None = None,
     font_family: str = "sans",
     min_font_size: int | None = None,
+    font_fit: str = "manual",
     autofit: bool = False,
     orientation: str = "normal",
     horizontal_padding_px: int | None = None,
     vertical_padding_px: int | None = None,
     line_spacing_px: int | None = None,
+    max_length_mm: float | None = None,
+    overflow_policy: str = "shrink-to-fit",
+    break_long_words: bool = False,
+    advance_mm_per_px: float = 0.1217,
+    printable_width_mm: float | None = None,
 ) -> RenderedBitstream:
+    resolved_font_fit = _resolve_font_fit(font_fit)
     resolved_font_size = font_size or (DEFAULT_PARAGRAPH_FONT_SIZE if paragraph else DEFAULT_TEXT_FONT_SIZE)
+    if resolved_font_fit == "largest-fitting" and font_size is None:
+        resolved_font_size = AUTO_FIT_FONT_SIZE_CEILING
     resolved_min_font_size = min_font_size if min_font_size is not None else MIN_AUTOFIT_FONT_SIZE
     resolved_font_family = _resolve_font_family(font_family)
+    if resolved_font_fit == "largest-fitting" and max_length_mm is None and orientation == "normal":
+        raise ValueError("font_fit=largest-fitting requires max_length_mm or rotated orientation")
     if resolved_min_font_size > resolved_font_size:
         raise ValueError("min_font_size must be less than or equal to font_size")
+    if advance_mm_per_px <= 0:
+        raise ValueError("advance_mm_per_px must be greater than zero")
 
     font_sizes = [resolved_font_size]
-    if autofit and orientation != "normal":
+    if (
+        resolved_font_fit == "largest-fitting"
+        or (autofit and orientation != "normal")
+        or (max_length_mm is not None and overflow_policy == "shrink-to-fit")
+    ):
         font_sizes = list(range(resolved_font_size, resolved_min_font_size - 1, -1))
 
     for candidate_size in font_sizes:
@@ -254,6 +349,7 @@ def render_text_job(
             vertical_padding_px=vertical_padding_px,
             line_spacing_px=line_spacing_px,
             wrap_to_printer_width=orientation == "normal",
+            break_long_words=break_long_words,
         )
         try:
             final_canvas = _finalize_canvas(text_image, printer_width=printer_width, orientation=orientation)
@@ -261,6 +357,23 @@ def render_text_job(
             if candidate_size != font_sizes[-1]:
                 continue
             raise
+
+        estimated_length_mm, fits_length_limit = _length_metrics(
+            height_px=final_canvas.height,
+            advance_mm_per_px=advance_mm_per_px,
+            max_length_mm=max_length_mm,
+            orientation=orientation,
+            printer_width=printer_width,
+            printable_width_mm=printable_width_mm,
+        )
+        if fits_length_limit is False:
+            if candidate_size != font_sizes[-1] and (
+                resolved_font_fit == "largest-fitting" or overflow_policy == "shrink-to-fit"
+            ):
+                continue
+            raise ValueError(
+                f"Rendered content is too long for max_length_mm={max_length_mm} (estimated {estimated_length_mm} mm)"
+            )
 
         resolved_horizontal_padding = horizontal_padding_px if horizontal_padding_px is not None else (12 if paragraph else 16)
         resolved_vertical_padding = vertical_padding_px if vertical_padding_px is not None else (10 if paragraph else 12)
@@ -271,13 +384,26 @@ def render_text_job(
                 orientation=orientation,
                 font_family=resolved_font_family,
                 font_size=candidate_size,
-                min_font_size=min_font_size,
+                min_font_size=resolved_min_font_size,
+                font_fit=resolved_font_fit,
                 autofit=autofit,
-                autofit_applied=autofit and candidate_size != resolved_font_size,
+                autofit_applied=candidate_size != resolved_font_size
+                and (
+                    resolved_font_fit == "largest-fitting"
+                    or (autofit and orientation != "normal")
+                    or (max_length_mm is not None and overflow_policy == "shrink-to-fit")
+                ),
                 horizontal_padding_px=resolved_horizontal_padding,
                 vertical_padding_px=resolved_vertical_padding,
                 line_spacing_px=resolved_line_spacing,
+                max_length_mm=max_length_mm,
+                overflow_policy=overflow_policy,
+                break_long_words=break_long_words,
             ),
+            advance_mm_per_px=advance_mm_per_px,
+            max_length_mm=max_length_mm,
+            printer_width=printer_width,
+            printable_width_mm=printable_width_mm,
         )
 
     raise ValueError(
@@ -292,7 +418,16 @@ def render_image_job(
     conversion: str = "threshold",
     orientation: str = "normal",
     mode: str | None = None,
+    max_length_mm: float | None = None,
+    fit_mode: str = "fit-width",
+    advance_mm_per_px: float = 0.1217,
+    printable_width_mm: float | None = None,
 ) -> RenderedBitstream:
+    if fit_mode not in IMAGE_FIT_MODES:
+        raise ValueError(f"Unsupported image fit mode: {fit_mode}")
+    if advance_mm_per_px <= 0:
+        raise ValueError("advance_mm_per_px must be greater than zero")
+
     binary_image = _render_image_binary(
         image_path,
         printer_width=printer_width,
@@ -303,13 +438,35 @@ def render_image_job(
     if canvas.width != printer_width:
         raise ValueError(f"Rendered image width {canvas.width} does not match printer width {printer_width}")
 
+    if fit_mode == "fit-within-length" and max_length_mm is not None:
+        max_length_px = max(
+            1,
+            int(
+                max_length_mm
+                / _length_mm_per_px(
+                    advance_mm_per_px=advance_mm_per_px,
+                    orientation=orientation,
+                    printer_width=printer_width,
+                    printable_width_mm=printable_width_mm,
+                )
+            ),
+        )
+        if canvas.height > max_length_px:
+            canvas = canvas.resize((printer_width, max_length_px), _resample_lanczos())
+
     return _rendered_bitstream(
         canvas,
         styling=RenderStyling(
             orientation=orientation,
+            max_length_mm=max_length_mm,
+            fit_mode=fit_mode,
             mode=mode,
             conversion=conversion,
         ),
+        advance_mm_per_px=advance_mm_per_px,
+        max_length_mm=max_length_mm,
+        printer_width=printer_width,
+        printable_width_mm=printable_width_mm,
     )
 
 
@@ -325,11 +482,17 @@ def render_text_bitstream(
     font_size: int | None = None,
     font_family: str = "sans",
     min_font_size: int | None = None,
+    font_fit: str = "manual",
     autofit: bool = False,
     orientation: str = "normal",
     horizontal_padding_px: int | None = None,
     vertical_padding_px: int | None = None,
     line_spacing_px: int | None = None,
+    max_length_mm: float | None = None,
+    overflow_policy: str = "shrink-to-fit",
+    break_long_words: bool = False,
+    advance_mm_per_px: float = 0.1217,
+    printable_width_mm: float | None = None,
 ) -> bytes:
     return render_text_job(
         text,
@@ -338,11 +501,17 @@ def render_text_bitstream(
         font_size=font_size,
         font_family=font_family,
         min_font_size=min_font_size,
+        font_fit=font_fit,
         autofit=autofit,
         orientation=orientation,
         horizontal_padding_px=horizontal_padding_px,
         vertical_padding_px=vertical_padding_px,
         line_spacing_px=line_spacing_px,
+        max_length_mm=max_length_mm,
+        overflow_policy=overflow_policy,
+        break_long_words=break_long_words,
+        advance_mm_per_px=advance_mm_per_px,
+        printable_width_mm=printable_width_mm,
     ).bitstream
 
 
@@ -352,12 +521,20 @@ def render_image_bitstream(
     printer_width: int = 384,
     conversion: str = "threshold",
     orientation: str = "normal",
+    max_length_mm: float | None = None,
+    fit_mode: str = "fit-width",
+    advance_mm_per_px: float = 0.1217,
+    printable_width_mm: float | None = None,
 ) -> bytes:
     return render_image_job(
         image_path,
         printer_width=printer_width,
         conversion=conversion,
         orientation=orientation,
+        max_length_mm=max_length_mm,
+        fit_mode=fit_mode,
+        advance_mm_per_px=advance_mm_per_px,
+        printable_width_mm=printable_width_mm,
     ).bitstream
 
 
@@ -367,6 +544,8 @@ def render_composed_bitstream(
     *,
     printer_width: int = 384,
     font_size: int | None = None,
+    min_font_size: int | None = None,
+    font_fit: str = "manual",
     font_family: str = "sans",
     horizontal_padding_px: int | None = None,
     vertical_padding_px: int | None = None,
@@ -374,31 +553,67 @@ def render_composed_bitstream(
     spacer_height_px: int | None = None,
     conversion: str = "threshold",
     layout: str = "text-above",
+    max_length_mm: float | None = None,
 ) -> bytes:
+    return render_compose_job(
+        text,
+        image_path,
+        printer_width=printer_width,
+        font_size=font_size,
+        min_font_size=min_font_size,
+        font_fit=font_fit,
+        font_family=font_family,
+        horizontal_padding_px=horizontal_padding_px,
+        vertical_padding_px=vertical_padding_px,
+        line_spacing_px=line_spacing_px,
+        spacer_height_px=spacer_height_px,
+        conversion=conversion,
+        layout=layout,
+        max_length_mm=max_length_mm,
+    ).bitstream
+
+
+def render_compose_job(
+    text: str,
+    image_path: str | Path,
+    *,
+    printer_width: int = 384,
+    font_size: int | None = None,
+    min_font_size: int | None = None,
+    font_fit: str = "manual",
+    font_family: str = "sans",
+    horizontal_padding_px: int | None = None,
+    vertical_padding_px: int | None = None,
+    line_spacing_px: int | None = None,
+    spacer_height_px: int | None = None,
+    conversion: str = "threshold",
+    layout: str = "text-above",
+    max_length_mm: float | None = None,
+    overflow_policy: str = "report-only",
+    break_long_words: bool = False,
+    advance_mm_per_px: float = 0.1217,
+    mode: str | None = None,
+) -> RenderedBitstream:
     resolved_layout = layout.lower()
     if resolved_layout not in COMPOSE_LAYOUTS:
         raise ValueError(f"Unsupported compose layout: {layout}")
 
+    resolved_font_fit = _resolve_font_fit(font_fit)
     resolved_font_size = font_size or DEFAULT_COMPOSE_FONT_SIZE
+    if resolved_font_fit == "largest-fitting" and font_size is None:
+        resolved_font_size = AUTO_FIT_FONT_SIZE_CEILING
+    resolved_min_font_size = min_font_size if min_font_size is not None else MIN_AUTOFIT_FONT_SIZE
     resolved_font_family = _resolve_font_family(font_family)
     resolved_spacer_height = spacer_height_px if spacer_height_px is not None else 12
+    if resolved_font_fit == "largest-fitting" and max_length_mm is None:
+        raise ValueError("font_fit=largest-fitting requires max_length_mm")
+    if resolved_min_font_size > resolved_font_size:
+        raise ValueError("min_font_size must be less than or equal to font_size")
     if resolved_spacer_height < 0:
         raise ValueError("spacer_height_px must be zero or greater")
+    if advance_mm_per_px <= 0:
+        raise ValueError("advance_mm_per_px must be greater than zero")
 
-    text_canvas = _finalize_canvas(
-        _render_text_canvas(
-            text,
-            printer_width=printer_width,
-            font_size=resolved_font_size,
-            paragraph=True,
-            font_family=resolved_font_family,
-            horizontal_padding_px=horizontal_padding_px,
-            vertical_padding_px=vertical_padding_px,
-            line_spacing_px=line_spacing_px,
-        ),
-        printer_width=printer_width,
-        orientation="normal",
-    )
     image_canvas = _binary_image_to_canvas(
         _render_image_binary(
             image_path,
@@ -408,16 +623,76 @@ def render_composed_bitstream(
     )
     spacer = Image.new("L", (printer_width, resolved_spacer_height), 255)
 
-    segments = [text_canvas, spacer, image_canvas]
-    if resolved_layout == "image-above":
-        segments = [image_canvas, spacer, text_canvas]
+    font_sizes = [resolved_font_size]
+    if resolved_font_fit == "largest-fitting":
+        font_sizes = list(range(resolved_font_size, resolved_min_font_size - 1, -1))
 
-    canvas_height = sum(segment.height for segment in segments)
-    canvas = Image.new("L", (printer_width, canvas_height), 255)
-    current_y = 0
-    for segment in segments:
-        canvas.paste(segment, (0, current_y))
-        current_y += segment.height
+    for candidate_size in font_sizes:
+        resolved_horizontal_padding = horizontal_padding_px if horizontal_padding_px is not None else 12
+        resolved_vertical_padding = vertical_padding_px if vertical_padding_px is not None else 10
+        resolved_line_spacing = line_spacing_px if line_spacing_px is not None else max(6, candidate_size // 4)
+        try:
+            text_canvas = _finalize_canvas(
+                _render_text_canvas(
+                    text,
+                    printer_width=printer_width,
+                    font_size=candidate_size,
+                    paragraph=True,
+                    font_family=resolved_font_family,
+                    horizontal_padding_px=resolved_horizontal_padding,
+                    vertical_padding_px=resolved_vertical_padding,
+                    line_spacing_px=resolved_line_spacing,
+                    break_long_words=break_long_words,
+                ),
+                printer_width=printer_width,
+                orientation="normal",
+            )
+        except ValueError:
+            if candidate_size != font_sizes[-1] and resolved_font_fit == "largest-fitting":
+                continue
+            raise
 
-    binary_image = (np.array(canvas) < 128).astype(int)
-    return image_data.binimage2bitstream(binary_image)
+        segments = [text_canvas, spacer, image_canvas]
+        if resolved_layout == "image-above":
+            segments = [image_canvas, spacer, text_canvas]
+
+        canvas_height = sum(segment.height for segment in segments)
+        canvas = Image.new("L", (printer_width, canvas_height), 255)
+        current_y = 0
+        for segment in segments:
+            canvas.paste(segment, (0, current_y))
+            current_y += segment.height
+
+        rendered = _rendered_bitstream(
+            canvas,
+            styling=RenderStyling(
+                layout=resolved_layout,
+                font_family=resolved_font_family,
+                font_size=candidate_size,
+                min_font_size=resolved_min_font_size,
+                font_fit=resolved_font_fit,
+                horizontal_padding_px=resolved_horizontal_padding,
+                vertical_padding_px=resolved_vertical_padding,
+                line_spacing_px=resolved_line_spacing,
+                spacer_height_px=resolved_spacer_height,
+                max_length_mm=max_length_mm,
+                overflow_policy=overflow_policy,
+                break_long_words=break_long_words,
+                mode=mode,
+                conversion=conversion,
+            ),
+            advance_mm_per_px=advance_mm_per_px,
+            max_length_mm=max_length_mm,
+        )
+        if rendered.fits_length_limit is False:
+            if candidate_size != font_sizes[-1] and resolved_font_fit == "largest-fitting":
+                continue
+            if overflow_policy == "error":
+                raise ValueError(
+                    f"Rendered content is too long for max_length_mm={max_length_mm} (estimated {rendered.estimated_length_mm} mm)"
+                )
+        return rendered
+
+    raise ValueError(
+        f"Rendered content is too long for max_length_mm={max_length_mm} even after font_fit down to {resolved_min_font_size}"
+    )

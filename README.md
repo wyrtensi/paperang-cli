@@ -156,7 +156,121 @@ After checking the result, explicitly allow paper use:
 paperang --json print text "Hello from Paperang" --allow-paper-use
 ```
 
-Keep the content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options the same between dry-run and the real print.
+Keep the content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options the same between dry-run and the real print.
+
+## Smart Layout Presets
+
+The CLI can load a per-invocation JSON payload with `--style-json`. That payload can select a built-in preset and add structured overrides without changing your saved config.
+
+For human-oriented workflows, treat built-in scenarios as reusable bases, not fixed modes. Start from the nearest scenario when one fits, then override only the fields needed for the current task. Reserve persistent `print_defaults` changes for explicit requests to make that behavior the default for future jobs.
+
+For text, paragraph, and compose jobs, set `"font_fit": "largest-fitting"` and omit or clear `font_size` to let the renderer start large and shrink to the biggest fitting size automatically.
+
+`break_long_words` is now opt-in. Leave it `false` to keep wrapping on whole words and let `largest-fitting` shrink a long token onto one line; set it to `true` only when you want forced character-chunk splitting.
+
+As a practical rule, labels and tags often benefit from `largest-fitting`, while notes and lists usually read better with ordinary whole-word wrapping. If you are driving the CLI through an agent, the agent should explain the choice in human terms such as readability, glanceability, and approximate strip length.
+
+Ready-to-copy copies of these payloads ship in `skills/paperang-cli/examples/` inside this repository, and the installed Agent Skill bundle carries the same files under `examples/` next to `SKILL.md`.
+
+Useful ordinary home scenarios now include broader note presets like `fridge-note` and `chore-list`, plus label-style presets such as `pantry-label`, `cable-tag`, and `storage-bin`.
+
+Address label example:
+
+```json
+{
+	"preset": "address-label",
+	"paragraph": {
+		"font_size": null,
+		"min_font_size": 14,
+		"font_fit": "largest-fitting",
+		"max_length_mm": 75.0,
+		"overflow_policy": "shrink-to-fit",
+		"break_long_words": false
+	}
+}
+```
+
+```powershell
+paperang --json print paragraph "221B Baker Street London" --dry-run --style-json .\address-label.json
+```
+
+Home pantry label example:
+
+```json
+{
+	"preset": "pantry-label",
+	"paragraph": {
+		"max_length_mm": 65.0,
+		"overflow_policy": "shrink-to-fit",
+		"break_long_words": false
+	}
+}
+```
+
+```powershell
+paperang --json print paragraph "PASTA" --dry-run --style-json .\pantry-label.json
+```
+
+General fridge note example:
+
+```json
+{
+	"preset": "fridge-note",
+	"paragraph": {
+		"font_size": null,
+		"min_font_size": 14,
+		"font_fit": "largest-fitting",
+		"max_length_mm": 120.0,
+		"line_spacing_px": 2,
+		"overflow_policy": "shrink-to-fit",
+		"break_long_words": false
+	}
+}
+```
+
+```powershell
+paperang --json print paragraph "Buy milk\nFruit\nBread" --dry-run --style-json .\fridge-note.json
+```
+
+Long logo strip example:
+
+```json
+{
+	"preset": "logo-strip",
+	"image": {
+		"fit_mode": "fit-within-length",
+		"max_length_mm": 70.0
+	}
+}
+```
+
+```powershell
+paperang --json print image .\banner.png --dry-run --style-json .\logo-strip.json
+```
+
+Composed badge example:
+
+```json
+{
+	"compose": {
+		"font_family": "mono",
+		"font_size": null,
+		"min_font_size": 14,
+		"font_fit": "largest-fitting",
+		"layout": "image-above",
+		"image_mode": "photo",
+		"max_length_mm": 55.0,
+		"overflow_policy": "report-only",
+		"break_long_words": false
+	}
+}
+```
+
+```powershell
+paperang --json print compose "Product title" .\badge.png --dry-run --style-json .\product-style.json
+```
+
+When a dry-run uses length-aware styling, the JSON result can include `estimated_length_mm`, `max_length_mm`, and `fits_length_limit` so you can decide whether to print before consuming paper.
 
 ## Python API
 
@@ -203,6 +317,12 @@ paperang --json print paragraph "A longer wrapped note for the printer." --dry-r
 paperang --json print paragraph "A longer wrapped note for the printer." --allow-paper-use
 ```
 
+Preset-driven label flow:
+
+```powershell
+paperang --json print paragraph "221B Baker Street London" --dry-run --style-json .\address-label.json
+```
+
 ### Image
 
 Use `--mode sticker` for logos, icons, and line art:
@@ -224,6 +344,12 @@ You can also rotate an image 90 degrees before it is fit to the P1 width:
 paperang --json print image ".\label.png" --dry-run --orientation rotate-90-ccw
 ```
 
+For long banners or logo strips, pair a preset with a physical length budget:
+
+```powershell
+paperang --json print image ".\banner.png" --dry-run --style-json .\logo-strip.json
+```
+
 Image quality depends on the source file and printer. A successful dry-run validates conversion and packaging, not the final paper output.
 
 ### Compose
@@ -239,6 +365,12 @@ Use `--layout image-above` when the image should be printed before the text:
 
 ```powershell
 paperang --json print compose "Product label" ".\sample.png" --dry-run --layout image-above
+```
+
+The same command can be driven by a JSON payload when you want a repeatable composed layout profile:
+
+```powershell
+paperang --json print compose "Product label" ".\sample.png" --dry-run --style-json .\product-style.json
 ```
 
 Compose printing uses the same experimental image conversion pipeline as `print image`.

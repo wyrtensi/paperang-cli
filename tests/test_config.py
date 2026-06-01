@@ -47,10 +47,19 @@ def test_write_example_config_creates_file(tmp_path):
     payload = json.loads(written.read_text(encoding="utf-8"))
     assert written == destination
     assert payload["model"] == "paperang_p1"
+    assert payload["calibration"]["printable_width_mm"] == 44.0
+    assert payload["calibration"]["advance_mm_per_px"] == 0.1217
     assert payload["print_defaults"]["text"]["font_family"] == "sans"
+    assert payload["print_defaults"]["text"]["font_fit"] == "manual"
+    assert payload["print_defaults"]["text"]["overflow_policy"] == "shrink-to-fit"
+    assert payload["print_defaults"]["text"]["break_long_words"] is False
     assert payload["print_defaults"]["image"]["orientation"] == "normal"
+    assert payload["print_defaults"]["image"]["fit_mode"] == "fit-width"
     assert "orientation" not in payload["print_defaults"]["compose"]
     assert "autofit" not in payload["print_defaults"]["compose"]
+    assert payload["print_defaults"]["compose"]["font_fit"] == "manual"
+    assert payload["print_defaults"]["compose"]["overflow_policy"] == "report-only"
+    assert payload["print_defaults"]["compose"]["break_long_words"] is False
 
 
 def test_load_config_accepts_partial_json_mapping(tmp_path):
@@ -118,4 +127,93 @@ def test_load_config_rejects_invalid_nested_print_defaults(tmp_path):
     )
 
     with pytest.raises(ConfigError, match="print_defaults.text.font_family"):
+        config_module.load_config(config_path)
+
+
+@pytest.mark.parametrize(
+    ("print_defaults_payload", "match"),
+    [
+        ({"text": {"autofit": "false"}}, "print_defaults.text.autofit must be a boolean"),
+        ({"compose": {"break_long_words": "false"}}, "print_defaults.compose.break_long_words must be a boolean"),
+    ],
+)
+def test_load_config_rejects_non_boolean_print_default_flags(tmp_path, print_defaults_payload, match):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(json.dumps({"print_defaults": print_defaults_payload}), encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=match):
+        config_module.load_config(config_path)
+
+
+def test_load_config_accepts_calibration_and_extended_print_defaults(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "calibration": {
+                    "printable_width_mm": 44.0,
+                    "advance_mm_per_px": 0.1217,
+                },
+                "print_defaults": {
+                    "text": {
+                        "font_fit": "largest-fitting",
+                        "max_length_mm": 72.0,
+                        "overflow_policy": "shrink-to-fit",
+                        "break_long_words": True,
+                    },
+                    "image": {
+                        "max_length_mm": 90.0,
+                        "fit_mode": "fit-width",
+                    },
+                    "compose": {
+                        "font_fit": "largest-fitting",
+                        "min_font_size": 14,
+                        "max_length_mm": 55.0,
+                        "overflow_policy": "report-only",
+                        "break_long_words": True,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, exists = config_module.load_config(config_path)
+
+    assert exists is True
+    assert settings.calibration.printable_width_mm == 44.0
+    assert settings.calibration.advance_mm_per_px == 0.1217
+    assert settings.print_defaults.text.font_fit == "largest-fitting"
+    assert settings.print_defaults.text.max_length_mm == 72.0
+    assert settings.print_defaults.text.overflow_policy == "shrink-to-fit"
+    assert settings.print_defaults.text.break_long_words is True
+    assert settings.print_defaults.image.max_length_mm == 90.0
+    assert settings.print_defaults.image.fit_mode == "fit-width"
+    assert settings.print_defaults.compose.font_fit == "largest-fitting"
+    assert settings.print_defaults.compose.min_font_size == 14
+    assert settings.print_defaults.compose.max_length_mm == 55.0
+    assert settings.print_defaults.compose.overflow_policy == "report-only"
+    assert settings.print_defaults.compose.break_long_words is True
+
+
+def test_load_config_rejects_invalid_calibration_and_extended_defaults(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "calibration": {
+                    "printable_width_mm": 0,
+                    "advance_mm_per_px": -0.1,
+                },
+                "print_defaults": {
+                    "image": {
+                        "fit_mode": "fit-everything",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="calibration.printable_width_mm|calibration.advance_mm_per_px|print_defaults.image.fit_mode"):
         config_module.load_config(config_path)

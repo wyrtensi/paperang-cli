@@ -26,6 +26,15 @@ CONTRACT_PAIRS = (
 REQUIRED_SKILL_FILES = (
     SKILL_ROOT / "SKILL.md",
     SKILL_ROOT / "agents" / "openai.yaml",
+    SKILL_ROOT / "examples" / "address-label.json",
+    SKILL_ROOT / "examples" / "fridge-note.json",
+    SKILL_ROOT / "examples" / "chore-list.json",
+    SKILL_ROOT / "examples" / "pantry-label.json",
+    SKILL_ROOT / "examples" / "cable-tag.json",
+    SKILL_ROOT / "examples" / "storage-bin.json",
+    SKILL_ROOT / "examples" / "receipt-note.json",
+    SKILL_ROOT / "examples" / "logo-strip.json",
+    SKILL_ROOT / "examples" / "product-style.json",
     SKILL_ROOT / "references" / "cli-contract.md",
     SKILL_ROOT / "references" / "cli-contract.json",
 )
@@ -36,6 +45,46 @@ REQUIRED_SAFETY_TEXT = (
     "SAFETY_ERROR",
     "Never automatically append an allow flag or retry.",
     "Real BLE communication and physical printing have been tested only on Windows.",
+)
+REQUIRED_SCENARIO_TEXT = (
+    "examples/address-label.json",
+    "examples/receipt-note.json",
+    "examples/logo-strip.json",
+    "examples/product-style.json",
+    "estimated_length_mm",
+    "fits_length_limit",
+)
+EXPECTED_SCENARIO_PAYLOADS = {
+    "address-label.json": ("preset", "paragraph"),
+    "receipt-note.json": ("preset", "paragraph"),
+    "logo-strip.json": ("preset", "image"),
+    "product-style.json": ("compose",),
+}
+REQUIRED_HOME_SCENARIO_TEXT = (
+    "examples/pantry-label.json",
+    "examples/cable-tag.json",
+    "examples/storage-bin.json",
+)
+EXPECTED_HOME_SCENARIO_PAYLOADS = {
+    "pantry-label.json": ("preset", "paragraph"),
+    "cable-tag.json": ("preset", "paragraph"),
+    "storage-bin.json": ("preset", "paragraph"),
+}
+REQUIRED_GENERAL_HOME_SCENARIO_TEXT = (
+    "examples/fridge-note.json",
+    "examples/chore-list.json",
+)
+EXPECTED_GENERAL_HOME_SCENARIO_PAYLOADS = {
+    "fridge-note.json": ("preset", "paragraph"),
+    "chore-list.json": ("preset", "paragraph"),
+}
+REQUIRED_SCENARIO_FLEXIBILITY_TEXT = (
+    "starting points, not a whitelist",
+    "build a fresh payload when none of the examples fit the request",
+)
+REQUIRED_FONT_FIT_GUIDANCE = (
+    "font-fit",
+    "font-fit mode",
 )
 
 
@@ -119,6 +168,59 @@ def validate_safety_rules() -> None:
     assert policy["self_test_always_requires_specific_follow_up_approval"] is True
 
 
+def validate_scenario_examples() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    for required_text in REQUIRED_SCENARIO_TEXT:
+        assert required_text in skill_text, f"Missing scenario guidance text: {required_text}"
+
+    for file_name, required_keys in EXPECTED_SCENARIO_PAYLOADS.items():
+        payload = json.loads((SKILL_ROOT / "examples" / file_name).read_text(encoding="utf-8"))
+        for required_key in required_keys:
+            assert required_key in payload, f"Scenario example {file_name} is missing key: {required_key}"
+
+
+def validate_home_scenario_examples() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    for required_text in REQUIRED_HOME_SCENARIO_TEXT:
+        assert required_text in skill_text, f"Missing home scenario guidance text: {required_text}"
+
+    for file_name, required_keys in EXPECTED_HOME_SCENARIO_PAYLOADS.items():
+        payload = json.loads((SKILL_ROOT / "examples" / file_name).read_text(encoding="utf-8"))
+        for required_key in required_keys:
+            assert required_key in payload, f"Home scenario example {file_name} is missing key: {required_key}"
+
+
+def validate_general_home_scenario_examples() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    for required_text in REQUIRED_GENERAL_HOME_SCENARIO_TEXT:
+        assert required_text in skill_text, f"Missing general home scenario guidance text: {required_text}"
+
+    for file_name, required_keys in EXPECTED_GENERAL_HOME_SCENARIO_PAYLOADS.items():
+        payload = json.loads((SKILL_ROOT / "examples" / file_name).read_text(encoding="utf-8"))
+        for required_key in required_keys:
+            assert required_key in payload, f"General home scenario example {file_name} is missing key: {required_key}"
+
+
+def validate_scenario_choice_flexibility() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    for required_text in REQUIRED_SCENARIO_FLEXIBILITY_TEXT:
+        assert required_text in skill_text, f"Missing scenario flexibility guidance text: {required_text}"
+
+
+def validate_font_fit_guidance() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    contract_markdown = (SKILL_ROOT / "references" / "cli-contract.md").read_text(encoding="utf-8")
+    contract_json = json.loads((SKILL_ROOT / "references" / "cli-contract.json").read_text(encoding="utf-8"))
+
+    assert REQUIRED_FONT_FIT_GUIDANCE[0] in skill_text, "Skill guidance must mention font-fit in matching dry-runs"
+    assert REQUIRED_FONT_FIT_GUIDANCE[0] in contract_markdown, (
+        "Human-readable contract guidance must mention font-fit in matching dry-runs"
+    )
+    assert REQUIRED_FONT_FIT_GUIDANCE[1] in contract_json["safety_policy"]["matching_dry_run_definition"], (
+        "Machine-readable contract guidance must mention font-fit mode in matching dry-runs"
+    )
+
+
 def main() -> int:
     validate_required_files()
     validate_frontmatter()
@@ -126,6 +228,11 @@ def main() -> int:
     validate_public_skill_sync()
     validate_version_sync()
     validate_safety_rules()
+    validate_scenario_examples()
+    validate_home_scenario_examples()
+    validate_general_home_scenario_examples()
+    validate_scenario_choice_flexibility()
+    validate_font_fit_guidance()
     print("paperang-cli Agent Skill is valid; references and public mirror are synchronized.")
     return 0
 

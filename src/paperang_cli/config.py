@@ -17,6 +17,30 @@ VALID_ORIENTATIONS = {"normal", "rotate-90-cw", "rotate-90-ccw"}
 VALID_IMAGE_MODES = {"sticker", "photo"}
 VALID_IMAGE_CONVERSIONS = {"threshold", "edge", "dither"}
 VALID_COMPOSE_LAYOUTS = {"text-above", "image-above"}
+VALID_TEXT_OVERFLOW_POLICIES = {"error", "shrink-to-fit"}
+VALID_COMPOSE_OVERFLOW_POLICIES = {"error", "report-only"}
+VALID_IMAGE_FIT_MODES = {"fit-width", "fit-within-length"}
+VALID_FONT_FIT_MODES = {"manual", "largest-fitting"}
+
+
+@dataclass(slots=True)
+class CalibrationSettings:
+    printable_width_mm: float = 44.0
+    advance_mm_per_px: float = 0.1217
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any] | None = None) -> "CalibrationSettings":
+        payload = data or {}
+        return cls(
+            printable_width_mm=_optional_float(payload.get("printable_width_mm"), default=44.0),
+            advance_mm_per_px=_optional_float(payload.get("advance_mm_per_px"), default=0.1217),
+        )
+
+    def validate(self) -> None:
+        if self.printable_width_mm <= 0:
+            raise ConfigError("calibration.printable_width_mm must be greater than zero")
+        if self.advance_mm_per_px <= 0:
+            raise ConfigError("calibration.advance_mm_per_px must be greater than zero")
 
 
 @dataclass(slots=True)
@@ -24,24 +48,32 @@ class TextPrintDefaults:
     font_family: str = "sans"
     font_size: int | None = None
     min_font_size: int | None = None
+    font_fit: str = "manual"
     autofit: bool = False
     orientation: str = "normal"
     horizontal_padding_px: int | None = None
     vertical_padding_px: int | None = None
     line_spacing_px: int | None = None
+    max_length_mm: float | None = None
+    overflow_policy: str = "shrink-to-fit"
+    break_long_words: bool = False
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any] | None = None) -> "TextPrintDefaults":
+    def from_mapping(cls, data: dict[str, Any] | None = None, *, label: str = "print_defaults.text") -> "TextPrintDefaults":
         payload = data or {}
         return cls(
             font_family=_normalize_string_choice(payload.get("font_family", "sans"), default="sans"),
             font_size=_optional_int(payload.get("font_size")),
             min_font_size=_optional_int(payload.get("min_font_size")),
-            autofit=bool(payload.get("autofit", False)),
+            font_fit=_normalize_string_choice(payload.get("font_fit", "manual"), default="manual"),
+            autofit=_optional_bool(payload.get("autofit"), f"{label}.autofit", default=False),
             orientation=_normalize_string_choice(payload.get("orientation", "normal"), default="normal"),
             horizontal_padding_px=_optional_int(payload.get("horizontal_padding_px")),
             vertical_padding_px=_optional_int(payload.get("vertical_padding_px")),
             line_spacing_px=_optional_int(payload.get("line_spacing_px")),
+            max_length_mm=_optional_float(payload.get("max_length_mm")),
+            overflow_policy=_normalize_string_choice(payload.get("overflow_policy", "shrink-to-fit"), default="shrink-to-fit"),
+            break_long_words=_optional_bool(payload.get("break_long_words"), f"{label}.break_long_words", default=False),
         )
 
     def validate(self, *, label: str) -> None:
@@ -49,12 +81,19 @@ class TextPrintDefaults:
             raise ConfigError(f"{label}.font_family must be one of: {', '.join(sorted(VALID_FONT_FAMILIES))}")
         if self.orientation not in VALID_ORIENTATIONS:
             raise ConfigError(f"{label}.orientation must be one of: {', '.join(sorted(VALID_ORIENTATIONS))}")
+        if self.font_fit not in VALID_FONT_FIT_MODES:
+            raise ConfigError(f"{label}.font_fit must be one of: {', '.join(sorted(VALID_FONT_FIT_MODES))}")
+        if self.overflow_policy not in VALID_TEXT_OVERFLOW_POLICIES:
+            raise ConfigError(
+                f"{label}.overflow_policy must be one of: {', '.join(sorted(VALID_TEXT_OVERFLOW_POLICIES))}"
+            )
 
         _validate_optional_positive_int(self.font_size, f"{label}.font_size")
         _validate_optional_positive_int(self.min_font_size, f"{label}.min_font_size")
         _validate_optional_non_negative_int(self.horizontal_padding_px, f"{label}.horizontal_padding_px")
         _validate_optional_non_negative_int(self.vertical_padding_px, f"{label}.vertical_padding_px")
         _validate_optional_non_negative_int(self.line_spacing_px, f"{label}.line_spacing_px")
+        _validate_optional_positive_float(self.max_length_mm, f"{label}.max_length_mm")
 
         if self.font_size is not None and self.min_font_size is not None and self.min_font_size > self.font_size:
             raise ConfigError(f"{label}.min_font_size must be less than or equal to {label}.font_size")
@@ -65,6 +104,8 @@ class ImagePrintDefaults:
     mode: str = "sticker"
     conversion: str | None = None
     orientation: str = "normal"
+    max_length_mm: float | None = None
+    fit_mode: str = "fit-width"
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None = None) -> "ImagePrintDefaults":
@@ -74,6 +115,8 @@ class ImagePrintDefaults:
             mode=_normalize_string_choice(payload.get("mode", "sticker"), default="sticker"),
             conversion=_normalize_string_choice(conversion_value) if conversion_value is not None else None,
             orientation=_normalize_string_choice(payload.get("orientation", "normal"), default="normal"),
+            max_length_mm=_optional_float(payload.get("max_length_mm")),
+            fit_mode=_normalize_string_choice(payload.get("fit_mode", "fit-width"), default="fit-width"),
         )
 
     def validate(self, *, label: str) -> None:
@@ -85,12 +128,18 @@ class ImagePrintDefaults:
             )
         if self.orientation not in VALID_ORIENTATIONS:
             raise ConfigError(f"{label}.orientation must be one of: {', '.join(sorted(VALID_ORIENTATIONS))}")
+        if self.fit_mode not in VALID_IMAGE_FIT_MODES:
+            raise ConfigError(f"{label}.fit_mode must be one of: {', '.join(sorted(VALID_IMAGE_FIT_MODES))}")
+
+        _validate_optional_positive_float(self.max_length_mm, f"{label}.max_length_mm")
 
 
 @dataclass(slots=True)
 class ComposePrintDefaults:
     font_family: str = "sans"
     font_size: int | None = None
+    min_font_size: int | None = None
+    font_fit: str = "manual"
     horizontal_padding_px: int | None = None
     vertical_padding_px: int | None = None
     line_spacing_px: int | None = None
@@ -98,14 +147,21 @@ class ComposePrintDefaults:
     spacer_height_px: int | None = None
     image_mode: str = "sticker"
     image_conversion: str | None = None
+    max_length_mm: float | None = None
+    overflow_policy: str = "report-only"
+    break_long_words: bool = False
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any] | None = None) -> "ComposePrintDefaults":
+    def from_mapping(
+        cls, data: dict[str, Any] | None = None, *, label: str = "print_defaults.compose"
+    ) -> "ComposePrintDefaults":
         payload = data or {}
         image_conversion = payload.get("image_conversion")
         return cls(
             font_family=_normalize_string_choice(payload.get("font_family", "sans"), default="sans"),
             font_size=_optional_int(payload.get("font_size")),
+            min_font_size=_optional_int(payload.get("min_font_size")),
+            font_fit=_normalize_string_choice(payload.get("font_fit", "manual"), default="manual"),
             horizontal_padding_px=_optional_int(payload.get("horizontal_padding_px")),
             vertical_padding_px=_optional_int(payload.get("vertical_padding_px")),
             line_spacing_px=_optional_int(payload.get("line_spacing_px")),
@@ -113,6 +169,9 @@ class ComposePrintDefaults:
             spacer_height_px=_optional_int(payload.get("spacer_height_px")),
             image_mode=_normalize_string_choice(payload.get("image_mode", "sticker"), default="sticker"),
             image_conversion=_normalize_string_choice(image_conversion) if image_conversion is not None else None,
+            max_length_mm=_optional_float(payload.get("max_length_mm")),
+            overflow_policy=_normalize_string_choice(payload.get("overflow_policy", "report-only"), default="report-only"),
+            break_long_words=_optional_bool(payload.get("break_long_words"), f"{label}.break_long_words", default=False),
         )
 
     def validate(self, *, label: str) -> None:
@@ -122,16 +181,27 @@ class ComposePrintDefaults:
             raise ConfigError(f"{label}.layout must be one of: {', '.join(sorted(VALID_COMPOSE_LAYOUTS))}")
         if self.image_mode not in VALID_IMAGE_MODES:
             raise ConfigError(f"{label}.image_mode must be one of: {', '.join(sorted(VALID_IMAGE_MODES))}")
+        if self.font_fit not in VALID_FONT_FIT_MODES:
+            raise ConfigError(f"{label}.font_fit must be one of: {', '.join(sorted(VALID_FONT_FIT_MODES))}")
+        if self.overflow_policy not in VALID_COMPOSE_OVERFLOW_POLICIES:
+            raise ConfigError(
+                f"{label}.overflow_policy must be one of: {', '.join(sorted(VALID_COMPOSE_OVERFLOW_POLICIES))}"
+            )
         if self.image_conversion is not None and self.image_conversion not in VALID_IMAGE_CONVERSIONS:
             raise ConfigError(
                 f"{label}.image_conversion must be one of: {', '.join(sorted(VALID_IMAGE_CONVERSIONS))}"
             )
 
         _validate_optional_positive_int(self.font_size, f"{label}.font_size")
+        _validate_optional_positive_int(self.min_font_size, f"{label}.min_font_size")
         _validate_optional_non_negative_int(self.horizontal_padding_px, f"{label}.horizontal_padding_px")
         _validate_optional_non_negative_int(self.vertical_padding_px, f"{label}.vertical_padding_px")
         _validate_optional_non_negative_int(self.line_spacing_px, f"{label}.line_spacing_px")
         _validate_optional_non_negative_int(self.spacer_height_px, f"{label}.spacer_height_px")
+        _validate_optional_positive_float(self.max_length_mm, f"{label}.max_length_mm")
+
+        if self.font_size is not None and self.min_font_size is not None and self.min_font_size > self.font_size:
+            raise ConfigError(f"{label}.min_font_size must be less than or equal to {label}.font_size")
 
 
 @dataclass(slots=True)
@@ -146,13 +216,18 @@ class PrintDefaults:
         payload = data or {}
         _require_mapping(payload, "print_defaults")
         return cls(
-            text=TextPrintDefaults.from_mapping(_optional_mapping(payload.get("text"), "print_defaults.text")),
+            text=TextPrintDefaults.from_mapping(
+                _optional_mapping(payload.get("text"), "print_defaults.text"),
+                label="print_defaults.text",
+            ),
             paragraph=TextPrintDefaults.from_mapping(
-                _optional_mapping(payload.get("paragraph"), "print_defaults.paragraph")
+                _optional_mapping(payload.get("paragraph"), "print_defaults.paragraph"),
+                label="print_defaults.paragraph",
             ),
             image=ImagePrintDefaults.from_mapping(_optional_mapping(payload.get("image"), "print_defaults.image")),
             compose=ComposePrintDefaults.from_mapping(
-                _optional_mapping(payload.get("compose"), "print_defaults.compose")
+                _optional_mapping(payload.get("compose"), "print_defaults.compose"),
+                label="print_defaults.compose",
             ),
         )
 
@@ -169,6 +244,20 @@ def _optional_int(value: Any) -> int | None:
     return int(value)
 
 
+def _optional_float(value: Any, *, default: float | None = None) -> float | None:
+    if value is None:
+        return default
+    return float(value)
+
+
+def _optional_bool(value: Any, field_name: str, *, default: bool | None = None) -> bool | None:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    raise ConfigError(f"{field_name} must be a boolean")
+
+
 def _normalize_string_choice(value: Any, *, default: str | None = None) -> str:
     if value is None:
         if default is None:
@@ -178,6 +267,11 @@ def _normalize_string_choice(value: Any, *, default: str | None = None) -> str:
 
 
 def _validate_optional_positive_int(value: int | None, field_name: str) -> None:
+    if value is not None and value <= 0:
+        raise ConfigError(f"{field_name} must be greater than zero")
+
+
+def _validate_optional_positive_float(value: float | None, field_name: str) -> None:
     if value is not None and value <= 0:
         raise ConfigError(f"{field_name} must be greater than zero")
 
@@ -207,7 +301,9 @@ class PaperangCliConfig:
     print_density: int = 75
     post_print_feed_mm: float = 5.0
     discovery_names: list[str] = field(default_factory=lambda: list(DEFAULT_DISCOVERY_NAMES))
+    calibration: CalibrationSettings = field(default_factory=CalibrationSettings)
     print_defaults: PrintDefaults = field(default_factory=PrintDefaults)
+    presets: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "PaperangCliConfig":
@@ -219,7 +315,9 @@ class PaperangCliConfig:
             print_density=int(data.get("print_density", defaults.print_density)),
             post_print_feed_mm=float(data.get("post_print_feed_mm", defaults.post_print_feed_mm)),
             discovery_names=list(data.get("discovery_names", DEFAULT_DISCOVERY_NAMES)),
+            calibration=CalibrationSettings.from_mapping(_optional_mapping(data.get("calibration"), "calibration")),
             print_defaults=PrintDefaults.from_mapping(_optional_mapping(data.get("print_defaults"), "print_defaults")),
+            presets=dict(_optional_mapping(data.get("presets"), "presets") or {}),
         )
         config.validate()
         return config
@@ -233,7 +331,10 @@ class PaperangCliConfig:
             raise ConfigError("post_print_feed_mm must be zero or greater")
         if not self.discovery_names:
             raise ConfigError("discovery_names must contain at least one candidate")
+        self.calibration.validate()
         self.print_defaults.validate()
+        for name, preset in self.presets.items():
+            _require_mapping(preset, f"presets.{name}")
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

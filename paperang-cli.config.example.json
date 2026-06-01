@@ -4,6 +4,10 @@
   "printerwidth": 384,
   "print_density": 75,
   "post_print_feed_mm": 5.0,
+  "calibration": {
+    "printable_width_mm": 44.0,
+    "advance_mm_per_px": 0.1217
+  },
   "discovery_names": [
     "MiaoMiaoJi",
     "Paperang",
@@ -14,37 +18,68 @@
       "font_family": "sans",
       "font_size": null,
       "min_font_size": null,
+      "font_fit": "manual",
       "autofit": false,
       "orientation": "normal",
       "horizontal_padding_px": null,
       "vertical_padding_px": null,
-      "line_spacing_px": null
+      "line_spacing_px": null,
+      "max_length_mm": null,
+      "overflow_policy": "shrink-to-fit",
+      "break_long_words": false
     },
     "paragraph": {
       "font_family": "sans",
       "font_size": null,
       "min_font_size": null,
+      "font_fit": "manual",
       "autofit": false,
       "orientation": "normal",
       "horizontal_padding_px": null,
       "vertical_padding_px": null,
-      "line_spacing_px": null
+      "line_spacing_px": null,
+      "max_length_mm": null,
+      "overflow_policy": "shrink-to-fit",
+      "break_long_words": false
     },
     "image": {
       "mode": "sticker",
       "conversion": null,
-      "orientation": "normal"
+      "orientation": "normal",
+      "max_length_mm": null,
+      "fit_mode": "fit-width"
     },
     "compose": {
       "font_family": "sans",
       "font_size": null,
+      "min_font_size": null,
+      "font_fit": "manual",
       "horizontal_padding_px": null,
       "vertical_padding_px": null,
       "line_spacing_px": null,
       "layout": "text-above",
       "spacer_height_px": null,
       "image_mode": "sticker",
-      "image_conversion": null
+      "image_conversion": null,
+      "max_length_mm": null,
+      "overflow_policy": "report-only",
+      "break_long_words": false
+    }
+  },
+  "presets": {
+    "address-label": {
+      "target": "paragraph",
+      "description": "Long address-style label printed along the paper path.",
+      "paragraph": {
+        "font_family": "mono",
+        "font_size": 30,
+        "min_font_size": 14,
+        "autofit": true,
+        "orientation": "rotate-90-cw",
+        "max_length_mm": 90.0,
+        "overflow_policy": "shrink-to-fit",
+        "break_long_words": false
+      }
     }
   }
 }

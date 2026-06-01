@@ -118,6 +118,106 @@ def test_print_text_dry_run_forwards_styling_overrides(monkeypatch, fake_driver)
     assert fake_driver.calls[-1][1]["orientation"] == "rotate-90-cw"
 
 
+def test_print_text_dry_run_forwards_font_fit(monkeypatch, fake_driver):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "text",
+            "shopping list",
+            "--dry-run",
+            "--font-fit",
+            "largest-fitting",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert fake_driver.calls[-1][0] == "print_text"
+    assert fake_driver.calls[-1][1]["font_fit"] == "largest-fitting"
+
+
+def test_print_paragraph_style_json_resolves_preset_and_cli_override(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    style_path = tmp_path / "paragraph-style.json"
+    style_path.write_text('{"preset": "address-label", "paragraph": {"max_length_mm": 75.0}}', encoding="utf-8")
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "paragraph",
+            "label text",
+            "--dry-run",
+            "--style-json",
+            str(style_path),
+            "--font-size",
+            "28",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert fake_driver.calls[-1][0] == "print_text"
+    assert fake_driver.calls[-1][1]["resolved_style"]["font_family"] == "mono"
+    assert fake_driver.calls[-1][1]["resolved_style"]["font_size"] == 28
+    assert fake_driver.calls[-1][1]["resolved_style"]["orientation"] == "rotate-90-cw"
+    assert fake_driver.calls[-1][1]["resolved_style"]["max_length_mm"] == 75.0
+
+
+def test_print_paragraph_style_json_rejects_non_boolean_flags(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    style_path = tmp_path / "paragraph-style-invalid.json"
+    style_path.write_text('{"paragraph": {"break_long_words": "false"}}', encoding="utf-8")
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "paragraph",
+            "label text",
+            "--dry-run",
+            "--style-json",
+            str(style_path),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert '"status": "error"' in result.output
+    assert '"code": "CONFIG_ERROR"' in result.output
+    assert 'style_json_payload.paragraph.break_long_words must be a boolean' in result.output
+
+
+def test_print_paragraph_style_json_reports_missing_file_as_config_error(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    style_path = tmp_path / "missing-style.json"
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "paragraph",
+            "label text",
+            "--dry-run",
+            "--style-json",
+            str(style_path),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert '"status": "error"' in result.output
+    assert '"code": "CONFIG_ERROR"' in result.output
+    assert 'Failed to read style JSON' in result.output
+
+
 def test_print_image_dry_run_json(monkeypatch, fake_driver, tmp_path):
     runner = CliRunner()
     monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
@@ -170,6 +270,37 @@ def test_print_image_photo_mode_resolves_to_dither(monkeypatch, fake_driver, tmp
     assert fake_driver.calls[-1][1]["mode"] == "photo"
 
 
+def test_print_image_style_json_resolves_preset_and_cli_override(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    image_path = tmp_path / "logo.png"
+    Image.new("RGB", (24, 24), "black").save(image_path)
+    style_path = tmp_path / "image-style.json"
+    style_path.write_text('{"preset": "logo-strip", "image": {"fit_mode": "fit-within-length", "max_length_mm": 70.0}}', encoding="utf-8")
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "image",
+            str(image_path),
+            "--dry-run",
+            "--style-json",
+            str(style_path),
+            "--conversion",
+            "edge",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert fake_driver.calls[-1][0] == "print_image"
+    assert fake_driver.calls[-1][1]["resolved_style"]["orientation"] == "rotate-90-cw"
+    assert fake_driver.calls[-1][1]["resolved_style"]["fit_mode"] == "fit-within-length"
+    assert fake_driver.calls[-1][1]["resolved_style"]["max_length_mm"] == 70.0
+    assert fake_driver.calls[-1][1]["resolved_style"]["conversion"] == "edge"
+
+
 def test_print_compose_dry_run_json(monkeypatch, fake_driver, tmp_path):
     runner = CliRunner()
     monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
@@ -199,6 +330,70 @@ def test_print_compose_dry_run_json(monkeypatch, fake_driver, tmp_path):
     assert fake_driver.calls[-1][0] == "print_compose"
     assert fake_driver.calls[-1][1]["layout"] == "image-above"
     assert fake_driver.calls[-1][1]["mode"] == "photo"
+
+
+def test_print_compose_style_json_resolves_json_and_cli_override(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    image_path = tmp_path / "compose-style.png"
+    Image.new("RGB", (24, 24), "black").save(image_path)
+    style_path = tmp_path / "compose-style.json"
+    style_path.write_text(
+        '{"compose": {"font_family": "mono", "font_size": 26, "max_length_mm": 55.0, "overflow_policy": "report-only", "break_long_words": false, "image_mode": "photo"}}',
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "compose",
+            "test print label",
+            str(image_path),
+            "--dry-run",
+            "--style-json",
+            str(style_path),
+            "--layout",
+            "image-above",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert fake_driver.calls[-1][0] == "print_compose"
+    assert fake_driver.calls[-1][1]["resolved_style"]["font_family"] == "mono"
+    assert fake_driver.calls[-1][1]["resolved_style"]["font_size"] == 26
+    assert fake_driver.calls[-1][1]["resolved_style"]["image_mode"] == "photo"
+    assert fake_driver.calls[-1][1]["resolved_style"]["layout"] == "image-above"
+    assert fake_driver.calls[-1][1]["resolved_style"]["max_length_mm"] == 55.0
+
+
+def test_print_compose_supports_font_fit_and_min_font_size(monkeypatch, fake_driver, tmp_path):
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+    image_path = tmp_path / "compose-largest-fit.png"
+    Image.new("RGB", (24, 24), "black").save(image_path)
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "print",
+            "compose",
+            "household checklist",
+            str(image_path),
+            "--dry-run",
+            "--font-fit",
+            "largest-fitting",
+            "--min-font-size",
+            "14",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert fake_driver.calls[-1][0] == "print_compose"
+    assert fake_driver.calls[-1][1]["font_fit"] == "largest-fitting"
+    assert fake_driver.calls[-1][1]["min_font_size"] == 14
 
 
 def test_self_test_dry_run_json(monkeypatch, fake_driver):
@@ -235,6 +430,18 @@ def test_api_p1_json():
     assert '"unsupported_parity_gaps": [' in result.output
 
 
+def test_api_p1_json_mentions_cli_style_json_and_length_metrics():
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["--json", "api", "p1"])
+
+    assert result.exit_code == 0
+    assert '"preset_catalog_available": true' in result.output
+    assert '"cli_style_json_support": true' in result.output
+    assert '"python_api_style_json_support": false' in result.output
+    assert '"length_metrics": [' in result.output
+
+
 def test_api_p1_human_output():
     runner = CliRunner()
 
@@ -244,6 +451,9 @@ def test_api_p1_human_output():
     assert "API: PaperangP1" in result.output
     assert "Status: available" in result.output
     assert "Styling support:" in result.output
+    assert "CLI style-json support: True" in result.output
+    assert "Python API style-json support: False" in result.output
+    assert "Length metrics:" in result.output
     assert "Rotated compose supported: False" in result.output
     assert "allow_paper_use required for" in result.output
     assert "Unsupported parity gaps:" in result.output

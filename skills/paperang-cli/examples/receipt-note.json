@@ -1,0 +1,8 @@
+{
+  "preset": "receipt-note",
+  "paragraph": {
+    "max_length_mm": 80.0,
+    "overflow_policy": "shrink-to-fit",
+    "break_long_words": false
+  }
+}

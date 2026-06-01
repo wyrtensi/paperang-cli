@@ -1,0 +1,8 @@
+{
+  "preset": "storage-bin",
+  "paragraph": {
+    "max_length_mm": 110.0,
+    "overflow_policy": "shrink-to-fit",
+    "break_long_words": false
+  }
+}

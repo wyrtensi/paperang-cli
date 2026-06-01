@@ -10,7 +10,7 @@ from paperang_cli.models import BatteryStatus, BluetoothMacStatus, PrintResult, 
 from paperang_cli.render import (
     DEFAULT_COMPOSE_FONT_SIZE,
     feed_units_from_mm,
-    render_composed_bitstream,
+    render_compose_job,
     render_image_job,
     render_text_job,
     resolve_image_conversion,
@@ -19,6 +19,15 @@ from paperang_cli.render import (
 SELF_TEST_WARNING = "The built-in self-test consumes substantially more paper than normal text or image prints."
 IMAGE_PRINT_WARNING = "Image printing is more experimental than text printing; conversion quality and physical output still need manual validation on real hardware."
 COMPOSE_PRINT_WARNING = "Combined text-and-image printing uses the same image conversion path as image printing; validate physical output on real hardware before relying on the layout."
+
+
+def _resolved_bool_style(effective_style: dict[str, object], key: str, *, default: bool) -> bool:
+    value = effective_style.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    raise DriverError(f"resolved_style.{key} must be a boolean")
 
 
 class PaperangP1Driver(PrinterDriver):
@@ -125,6 +134,8 @@ class PaperangP1Driver(PrinterDriver):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        font_fit: str | None = None,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         if not text:
@@ -134,22 +145,48 @@ class PaperangP1Driver(PrinterDriver):
 
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
         style_defaults = self.settings.print_defaults.paragraph if paragraph else self.settings.print_defaults.text
+        effective_style = dict(resolved_style or {})
+        if not effective_style:
+            effective_style = {
+                "font_size": font_size if font_size is not None else style_defaults.font_size,
+                "font_family": font_family or style_defaults.font_family,
+                "min_font_size": min_font_size if min_font_size is not None else style_defaults.min_font_size,
+                "font_fit": font_fit or style_defaults.font_fit,
+                "autofit": autofit if autofit is not None else style_defaults.autofit,
+                "orientation": orientation or style_defaults.orientation,
+                "horizontal_padding_px": (
+                    horizontal_padding_px if horizontal_padding_px is not None else style_defaults.horizontal_padding_px
+                ),
+                "vertical_padding_px": (
+                    vertical_padding_px if vertical_padding_px is not None else style_defaults.vertical_padding_px
+                ),
+                "line_spacing_px": line_spacing_px if line_spacing_px is not None else style_defaults.line_spacing_px,
+                "max_length_mm": style_defaults.max_length_mm,
+                "overflow_policy": style_defaults.overflow_policy,
+                "break_long_words": style_defaults.break_long_words,
+            }
         rendered = render_text_job(
             text,
             printer_width=self.settings.printerwidth,
             paragraph=paragraph,
-            font_size=font_size if font_size is not None else style_defaults.font_size,
-            font_family=font_family or style_defaults.font_family,
-            min_font_size=min_font_size if min_font_size is not None else style_defaults.min_font_size,
-            autofit=autofit if autofit is not None else style_defaults.autofit,
-            orientation=orientation or style_defaults.orientation,
-            horizontal_padding_px=(
-                horizontal_padding_px if horizontal_padding_px is not None else style_defaults.horizontal_padding_px
+            font_size=effective_style.get("font_size"),
+            font_family=str(effective_style.get("font_family") or style_defaults.font_family),
+            min_font_size=effective_style.get("min_font_size"),
+            font_fit=str(effective_style.get("font_fit") or style_defaults.font_fit),
+            autofit=_resolved_bool_style(effective_style, "autofit", default=style_defaults.autofit),
+            orientation=str(effective_style.get("orientation") or style_defaults.orientation),
+            horizontal_padding_px=effective_style.get("horizontal_padding_px"),
+            vertical_padding_px=effective_style.get("vertical_padding_px"),
+            line_spacing_px=effective_style.get("line_spacing_px"),
+            max_length_mm=effective_style.get("max_length_mm"),
+            overflow_policy=str(effective_style.get("overflow_policy") or style_defaults.overflow_policy),
+            break_long_words=_resolved_bool_style(
+                effective_style,
+                "break_long_words",
+                default=style_defaults.break_long_words,
             ),
-            vertical_padding_px=(
-                vertical_padding_px if vertical_padding_px is not None else style_defaults.vertical_padding_px
-            ),
-            line_spacing_px=line_spacing_px if line_spacing_px is not None else style_defaults.line_spacing_px,
+            advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
+            printable_width_mm=self.settings.calibration.printable_width_mm,
         )
         return self._send_bitstream_job(
             bitstream=rendered.bitstream,
@@ -159,6 +196,9 @@ class PaperangP1Driver(PrinterDriver):
             feed_mm=resolved_feed_mm,
             dry_run=dry_run,
             address=address,
+            estimated_length_mm=rendered.estimated_length_mm,
+            max_length_mm=rendered.max_length_mm,
+            fits_length_limit=rendered.fits_length_limit,
             styling=rendered.styling.to_dict(),
         )
 
@@ -172,22 +212,36 @@ class PaperangP1Driver(PrinterDriver):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         self._require_paper_use(allow_paper_use=allow_paper_use, dry_run=dry_run)
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
         image_defaults = self.settings.print_defaults.image
-        resolved_mode = mode or image_defaults.mode
+        effective_style = dict(resolved_style or {})
+        if not effective_style:
+            effective_style = {
+                "mode": mode or image_defaults.mode,
+                "conversion": conversion or image_defaults.conversion,
+                "orientation": orientation or image_defaults.orientation,
+                "max_length_mm": image_defaults.max_length_mm,
+                "fit_mode": image_defaults.fit_mode,
+            }
+        resolved_mode = str(effective_style.get("mode") or image_defaults.mode)
         resolved_conversion = resolve_image_conversion(
             mode=resolved_mode,
-            conversion=conversion or image_defaults.conversion,
+            conversion=effective_style.get("conversion") or image_defaults.conversion,
         )
         rendered = render_image_job(
             image_path,
             printer_width=self.settings.printerwidth,
             conversion=resolved_conversion,
-            orientation=orientation or image_defaults.orientation,
+            orientation=str(effective_style.get("orientation") or image_defaults.orientation),
             mode=resolved_mode,
+            max_length_mm=effective_style.get("max_length_mm"),
+            fit_mode=str(effective_style.get("fit_mode") or image_defaults.fit_mode),
+            advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
+            printable_width_mm=self.settings.calibration.printable_width_mm,
         )
         return self._send_bitstream_job(
             bitstream=rendered.bitstream,
@@ -197,6 +251,9 @@ class PaperangP1Driver(PrinterDriver):
             address=address,
             source_path=str(image_path),
             conversion=resolved_conversion,
+            estimated_length_mm=rendered.estimated_length_mm,
+            max_length_mm=rendered.max_length_mm,
+            fits_length_limit=rendered.fits_length_limit,
             warning=IMAGE_PRINT_WARNING,
             styling=rendered.styling.to_dict(),
         )
@@ -213,6 +270,9 @@ class PaperangP1Driver(PrinterDriver):
         feed_mm: float | None,
         allow_paper_use: bool,
         dry_run: bool,
+        min_font_size: int | None = None,
+        font_fit: str | None = None,
+        resolved_style: dict[str, object] | None = None,
         address: str | None = None,
     ) -> PrintResult:
         if not text:
@@ -221,48 +281,59 @@ class PaperangP1Driver(PrinterDriver):
         self._require_paper_use(allow_paper_use=allow_paper_use, dry_run=dry_run)
         resolved_feed_mm = self.settings.post_print_feed_mm if feed_mm is None else feed_mm
         compose_defaults = self.settings.print_defaults.compose
-        resolved_layout = layout or compose_defaults.layout
-        resolved_font_size = font_size if font_size is not None else (compose_defaults.font_size or DEFAULT_COMPOSE_FONT_SIZE)
-        resolved_mode = mode or compose_defaults.image_mode
+        effective_style = dict(resolved_style or {})
+        resolved_layout = str(effective_style.get("layout") or layout or compose_defaults.layout)
+        resolved_font_size = effective_style.get("font_size")
+        if resolved_font_size is None:
+            resolved_font_size = font_size if font_size is not None else (compose_defaults.font_size or DEFAULT_COMPOSE_FONT_SIZE)
+        resolved_min_font_size = effective_style.get("min_font_size")
+        if resolved_min_font_size is None:
+            resolved_min_font_size = min_font_size if min_font_size is not None else compose_defaults.min_font_size
+        resolved_font_fit = str(effective_style.get("font_fit") or font_fit or compose_defaults.font_fit)
+        resolved_mode = str(effective_style.get("image_mode") or mode or compose_defaults.image_mode)
         resolved_conversion = resolve_image_conversion(
             mode=resolved_mode,
-            conversion=conversion or compose_defaults.image_conversion,
+            conversion=effective_style.get("image_conversion") or conversion or compose_defaults.image_conversion,
         )
-        bitstream = render_composed_bitstream(
+        rendered = render_compose_job(
             text,
             image_path,
             printer_width=self.settings.printerwidth,
             font_size=resolved_font_size,
-            font_family=compose_defaults.font_family,
-            horizontal_padding_px=compose_defaults.horizontal_padding_px,
-            vertical_padding_px=compose_defaults.vertical_padding_px,
-            line_spacing_px=compose_defaults.line_spacing_px,
-            spacer_height_px=compose_defaults.spacer_height_px,
+            min_font_size=resolved_min_font_size,
+            font_fit=resolved_font_fit,
+            font_family=str(effective_style.get("font_family") or compose_defaults.font_family),
+            horizontal_padding_px=effective_style.get("horizontal_padding_px", compose_defaults.horizontal_padding_px),
+            vertical_padding_px=effective_style.get("vertical_padding_px", compose_defaults.vertical_padding_px),
+            line_spacing_px=effective_style.get("line_spacing_px", compose_defaults.line_spacing_px),
+            spacer_height_px=effective_style.get("spacer_height_px", compose_defaults.spacer_height_px),
             conversion=resolved_conversion,
             layout=resolved_layout,
+            max_length_mm=effective_style.get("max_length_mm", compose_defaults.max_length_mm),
+            overflow_policy=str(effective_style.get("overflow_policy") or compose_defaults.overflow_policy),
+            break_long_words=_resolved_bool_style(
+                effective_style,
+                "break_long_words",
+                default=compose_defaults.break_long_words,
+            ),
+            advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
+            mode=resolved_mode,
         )
         return self._send_bitstream_job(
-            bitstream=bitstream,
+            bitstream=rendered.bitstream,
             operation="compose",
             feed_mm=resolved_feed_mm,
             dry_run=dry_run,
             address=address,
-            font_size=resolved_font_size,
+            font_size=rendered.styling.font_size,
             source_path=str(image_path),
             conversion=resolved_conversion,
             layout=resolved_layout,
+            estimated_length_mm=rendered.estimated_length_mm,
+            max_length_mm=rendered.max_length_mm,
+            fits_length_limit=rendered.fits_length_limit,
             warning=COMPOSE_PRINT_WARNING,
-            styling={
-                "layout": resolved_layout,
-                "font_family": compose_defaults.font_family,
-                "font_size": resolved_font_size,
-                "horizontal_padding_px": compose_defaults.horizontal_padding_px,
-                "vertical_padding_px": compose_defaults.vertical_padding_px,
-                "line_spacing_px": compose_defaults.line_spacing_px,
-                "spacer_height_px": compose_defaults.spacer_height_px,
-                "mode": resolved_mode,
-                "conversion": resolved_conversion,
-            },
+            styling=rendered.styling.to_dict(),
         )
 
     def self_test(
@@ -332,6 +403,9 @@ class PaperangP1Driver(PrinterDriver):
         source_path: str | None = None,
         conversion: str | None = None,
         layout: str | None = None,
+        estimated_length_mm: float | None = None,
+        max_length_mm: float | None = None,
+        fits_length_limit: bool | None = None,
         warning: str | None = None,
         styling: dict | None = None,
     ) -> PrintResult:
@@ -351,6 +425,9 @@ class PaperangP1Driver(PrinterDriver):
                 source_path=source_path,
                 conversion=conversion,
                 layout=layout,
+                estimated_length_mm=estimated_length_mm,
+                max_length_mm=max_length_mm,
+                fits_length_limit=fits_length_limit,
                 warning=warning,
                 styling=styling,
             )
@@ -377,6 +454,9 @@ class PaperangP1Driver(PrinterDriver):
                 conversion=conversion,
                 layout=layout,
                 battery_after=battery_after,
+                estimated_length_mm=estimated_length_mm,
+                max_length_mm=max_length_mm,
+                fits_length_limit=fits_length_limit,
                 warning=warning,
                 styling=styling,
             )

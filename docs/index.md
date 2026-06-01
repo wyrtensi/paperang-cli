@@ -46,9 +46,10 @@ If you are using the project as a person:
 1. Read `installation.md`.
 2. Read `usage/p1-api.md` if you want the Python library surface.
 3. Read `usage/configuration.md`.
-3. Run `paperang status` or `paperang discover` before printing.
-4. Use `--dry-run` before any real print.
-5. Treat `print image` as experimental until you verify real hardware output.
+4. Read `usage/commands.md` if you want ready-made `--style-json` examples for labels, long image strips, and composed badges.
+5. Run `paperang status` or `paperang discover` before printing.
+6. Use `--dry-run` before any real print.
+7. Treat `print image` as experimental until you verify real hardware output.
 
 If you are using the project as an automation or agent surface:
 
@@ -62,7 +63,7 @@ If you are using the project as an automation or agent surface:
 
 - `installation.md`: install and local setup
 - `../skills/paperang-cli/SKILL.md`: portable distributable Agent Skill for safe automation
-- `usage/commands.md`: command reference and examples
+- `usage/commands.md`: command reference, smart-layout examples, and ready-to-copy `--style-json` payloads
 - `usage/p1-api.md`: high-level Python API for `PaperangP1`
 - `usage/configuration.md`: config format, resolution order, and recommended defaults
 - `development/architecture.md`: package structure and design rationale

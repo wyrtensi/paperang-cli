@@ -93,6 +93,19 @@ Use `paperang --json config show` to inspect the active settings, nested `print_
 
 The active config may now contain a nested `print_defaults` object for P1-only styling defaults. CLI flags override those defaults for one invocation.
 
+For agent-driven styling, built-in scenarios and shipped examples should be treated as reusable starting points, not as a whitelist and not as a hidden alternate render mode.
+
+Recommended default policy for agents:
+
+- prefer the nearest scenario or example as a base
+- if that base is close but not exact, add temporary per-invocation `--style-json` overrides
+- if no scenario fits, build a temporary `--style-json` payload from the existing public controls
+- leave persistent `print_defaults` unchanged unless the user explicitly asks to make the behavior the default for future jobs
+- keep `break_long_words` at `false` unless the user explicitly asks for character-level splitting
+- when a long token must fit and the user did not request splitting, prefer whole words and `font_fit=largest-fitting` before enabling character-chunk splitting
+- describe expected paper output in human terms and use `estimated_length_mm`, `max_length_mm`, and `fits_length_limit` when present
+- answer in the user's language when it is clear, otherwise follow higher-priority environment instructions
+
 ## Safety Model
 
 ### Hardware-safe queries
@@ -116,7 +129,7 @@ These commands never consume paper:
 
 Every `print ... --dry-run` flow is non-printing and does not connect to the printer.
 
-Agents must run a successful matching dry-run before any real print. A matching dry-run uses the same print subcommand, content, image, layout, conversion mode, font size, font family, orientation, autofit intent, and feed options as the intended real print. If the CLI invocation relies on config-driven styling defaults, the dry-run must be executed with the same active config.
+Agents must run a successful matching dry-run before any real print. A matching dry-run uses the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options as the intended real print. If the CLI invocation relies on config-driven styling defaults, the dry-run must be executed with the same active config.
 
 ### Paper-consuming commands
 
@@ -143,7 +156,7 @@ Agents must:
 
 A missing allow flag is a hard stop. If the CLI returns `SAFETY_ERROR`, do not automatically retry with an allow flag.
 
-Optional flags such as `--font-size`, `--font-family`, `--min-font-size`, `--autofit`, `--orientation`, `--feed-mm`, `--layout`, `--mode`, and `--conversion` do not bypass or weaken the safety gate.
+Optional flags such as `--font-size`, `--min-font-size`, `--font-fit`, `--font-family`, `--autofit`, `--orientation`, `--feed-mm`, `--layout`, `--mode`, and `--conversion` do not bypass or weaken the safety gate.
 
 The current implementation permits an allow flag to appear together with `--dry-run`. Dry-run still wins: no printer connection or paper use occurs. Agents should omit allow flags from dry-runs to keep intent clear.
 
@@ -175,11 +188,15 @@ Its dry-run is only a CLI-path validation and warning preview. It does not conne
 
 | Command | Dry-run validates | Dry-run does not validate |
 | --- | --- | --- |
-| `print text` | text rendering, selected font family, selected orientation, bitstream preparation, font size, feed calculation | printer connectivity, printer readiness, physical output |
-| `print paragraph` | wrapped rendering, selected font family, selected orientation, bitstream preparation, font size, feed calculation | printer connectivity, printer readiness, physical output |
-| `print image` | local image loading, selected conversion, selected orientation, bitstream preparation, feed calculation | printer connectivity, printer readiness, physical image quality |
-| `print compose` | wrapped text, local image loading, selected layout and conversion, combined bitstream preparation, feed calculation | printer connectivity, printer readiness, physical layout quality |
+| `print text` | text rendering, selected font family, selected orientation, bitstream preparation, font size, feed calculation, estimated length reporting when the active style carries a length budget | printer connectivity, printer readiness, physical output |
+| `print paragraph` | wrapped rendering, selected font family, selected orientation, bitstream preparation, font size, feed calculation, estimated length reporting when the active style carries a length budget | printer connectivity, printer readiness, physical output |
+| `print image` | local image loading, selected conversion, selected orientation, bitstream preparation, feed calculation, estimated length reporting and length-fit validation when configured | printer connectivity, printer readiness, physical image quality |
+| `print compose` | wrapped text, local image loading, selected layout and conversion, combined bitstream preparation, feed calculation, estimated length reporting and length-limit evaluation when configured | printer connectivity, printer readiness, physical layout quality |
 | `print self-test` | command path and high-paper warning payload | printer connectivity, printer readiness, any hardware self-test state |
+
+When a print result includes `estimated_length_mm`, `max_length_mm`, or `fits_length_limit`, agents should surface those fields directly instead of re-estimating paper usage from pixels.
+
+For rotated `rotate-90-cw` and `rotate-90-ccw` text and image jobs, those length fields now use the head-width calibration value `printable_width_mm` when it is available. Ordinary orientation jobs and ordinary compose length planning continue to use `advance_mm_per_px`.
 
 ## Recommended Agent Workflows
 
@@ -205,16 +222,18 @@ When an automation or agent needs to know what Python API surface is actually su
 
 ### Text or paragraph
 
-1. Run the selected `print text ... --dry-run` or `print paragraph ... --dry-run`.
-2. When using rotated text, keep `--orientation`, `--font-family`, and `--autofit` identical between dry-run and real print.
-3. Report the dry-run result.
-4. If the current request was exploratory or ambiguous, ask for explicit approval to consume paper.
-5. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
+1. Prefer the nearest scenario or example as a base when it fits, otherwise build a temporary `--style-json` payload from the existing public controls.
+2. Keep `break_long_words` at `false` unless the user explicitly asks for character-level splitting.
+3. Run the selected `print text ... --dry-run` or `print paragraph ... --dry-run`.
+4. When using rotated text or JSON-driven styling, keep `--orientation`, `--font-family`, `--min-font-size`, `--font-fit`, `--autofit`, and any `--style-json` payload identical between dry-run and real print.
+5. Report the dry-run result in human terms, including expected paper length when the result exposes it.
+6. If the current request was exploratory or ambiguous, ask for explicit approval to consume paper.
+7. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
 
 ### Image
 
-1. Run `paperang --json print image ".\sample.png" --dry-run --mode sticker`, or select `--mode photo`.
-2. Include `--orientation` when you want the image rotated along the paper path.
+1. Run `paperang --json print image ".\sample.png" --dry-run --mode sticker`, or use the matching `--style-json` payload when a preset or structured override controls orientation or length fitting.
+2. Include `--orientation` when you want the image rotated along the paper path, and keep the same `--style-json` payload for the real print.
 3. Report that physical quality remains experimental.
 4. If the current request was exploratory or ambiguous, ask for explicit approval.
 5. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
@@ -222,11 +241,13 @@ When an automation or agent needs to know what Python API surface is actually su
 
 ### Compose
 
-1. Run the matching `paperang --json print compose "label" ".\sample.png" --dry-run --mode sticker`.
-2. Report that the image portion remains experimental.
-3. If the current request was exploratory or ambiguous, ask for explicit approval.
-4. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
-5. Ask the user to validate physical layout quality before repeated automation.
+1. Prefer the nearest scenario or example as a base when it fits, otherwise build a temporary `--style-json` payload from the existing public controls.
+2. Keep `break_long_words` at `false` unless the user explicitly asks for character-level splitting in the text section.
+3. Run the matching `paperang --json print compose "label" ".\sample.png" --dry-run --mode sticker`, or the matching `--style-json` payload when layout or length handling is JSON-driven.
+4. Report that the image portion remains experimental and describe the expected paper result in human terms.
+5. If the current request was exploratory or ambiguous, ask for explicit approval.
+6. Repeat the matching command with `--allow-paper-use` after approval from the current request or a follow-up.
+7. Ask the user to validate physical layout quality before repeated automation.
 
 ### Self-test
 
@@ -279,13 +300,17 @@ Agents must read runtime values rather than assume fixed device values.
 
 | Command | Arguments | Options |
 | --- | --- | --- |
-| `print text` | `TEXT` | `--address`, `--font-size`, `--font-family sans\|mono\|serif`, `--min-font-size`, `--autofit`, `--no-autofit`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--feed-mm`, `--dry-run`, `--allow-paper-use` |
-| `print paragraph` | `TEXT` | `--address`, `--font-size`, `--font-family sans\|mono\|serif`, `--min-font-size`, `--autofit`, `--no-autofit`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--feed-mm`, `--dry-run`, `--allow-paper-use` |
-| `print image` | `IMAGE_PATH` | `--address`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--feed-mm`, `--mode sticker\|photo`, `--conversion threshold\|edge\|dither`, `--dry-run`, `--allow-paper-use` |
-| `print compose` | `TEXT IMAGE_PATH` | `--address`, `--font-size`, `--feed-mm`, `--layout text-above\|image-above`, `--mode sticker\|photo`, `--conversion threshold\|edge\|dither`, `--dry-run`, `--allow-paper-use` |
+| `print text` | `TEXT` | `--address`, `--font-size`, `--font-family sans\|mono\|serif`, `--min-font-size`, `--font-fit manual\|largest-fitting`, `--autofit`, `--no-autofit`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--style-json PATH\|-`, `--feed-mm`, `--dry-run`, `--allow-paper-use` |
+| `print paragraph` | `TEXT` | `--address`, `--font-size`, `--font-family sans\|mono\|serif`, `--min-font-size`, `--font-fit manual\|largest-fitting`, `--autofit`, `--no-autofit`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--style-json PATH\|-`, `--feed-mm`, `--dry-run`, `--allow-paper-use` |
+| `print image` | `IMAGE_PATH` | `--address`, `--orientation normal\|rotate-90-cw\|rotate-90-ccw`, `--style-json PATH\|-`, `--feed-mm`, `--mode sticker\|photo`, `--conversion threshold\|edge\|dither`, `--dry-run`, `--allow-paper-use` |
+| `print compose` | `TEXT IMAGE_PATH` | `--address`, `--font-size`, `--min-font-size`, `--font-fit manual\|largest-fitting`, `--style-json PATH\|-`, `--feed-mm`, `--layout text-above\|image-above`, `--mode sticker\|photo`, `--conversion threshold\|edge\|dither`, `--dry-run`, `--allow-paper-use` |
 | `print self-test` | none | `--address`, `--dry-run`, `--allow-large-paper-use` |
 
-For image and compose rendering, `--conversion` takes precedence over `--mode`. When `--mode` or `--layout` is omitted, the current release may inherit those values from config-driven print defaults.
+For `print text`, `print paragraph`, `print image`, and `print compose`, `--style-json` accepts a JSON file path or `-` for stdin. The payload can select a preset and carry an operation-specific override block. Explicit CLI flags still take precedence over the JSON payload.
+
+For `print text`, `print paragraph`, and `print compose`, `font_fit=largest-fitting` means the renderer searches downward for the biggest fitting font size. If `font_size` is omitted or null, the search starts from a large automatic ceiling.
+
+For image and compose rendering, `--conversion` takes precedence over `--mode`. When `--mode`, `--layout`, or other styling values are omitted, the current release may inherit those values from config-driven print defaults or from the selected JSON preset.
 
 ### Config commands
 
