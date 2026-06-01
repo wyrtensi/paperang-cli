@@ -279,7 +279,7 @@ When a dry-run uses length-aware styling, the JSON result can include `estimated
 ```python
 from paperang_cli import PaperangP1, PaperangP2
 
-p1 = PaperangP1(address="04:7F:0E:3A:4F:31")
+p1 = PaperangP1(address="AA:BB:CC:DD:EE:FF")
 p2 = PaperangP2(transport="usb")
 
 p1.connect()
