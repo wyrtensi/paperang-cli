@@ -6,7 +6,9 @@ from pathlib import Path
 from PIL import Image
 
 from paperang_cli import PaperangP1
+from paperang_cli import PaperangP2
 from paperang_cli.api import PaperangP1 as PackagePaperangP1
+from paperang_cli.api import PaperangP2 as PackagePaperangP2
 from paperang_cli.api import get_api_contract, list_api_contract_summaries
 from paperang_cli.drivers import registry
 
@@ -15,23 +17,55 @@ def test_api_package_import_exposes_p1_facade():
     assert PackagePaperangP1 is PaperangP1
 
 
-def test_api_catalog_lists_available_and_coming_soon_entries():
+def test_api_package_import_exposes_p2_facade():
+    assert PackagePaperangP2 is PaperangP2
+
+
+def test_api_catalog_lists_available_entries_for_p1_and_p2():
     summaries = list_api_contract_summaries()
 
     assert summaries[0]["api"] == "p1"
     assert summaries[0]["available"] is True
     assert summaries[1]["api"] == "p2"
-    assert summaries[1]["available"] is False
-    assert summaries[1]["status"] == "coming-soon"
+    assert summaries[1]["available"] is True
+    assert summaries[1]["status"] == "available"
 
 
-def test_api_contract_for_p2_is_placeholder_only():
+def test_api_contract_for_p2_is_available():
     contract = get_api_contract("p2")
 
-    assert contract["availability"]["available"] is False
-    assert contract["planned_class_name"] == "PaperangP2"
-    assert contract["class_name"] is None
-    assert contract["methods"] == []
+    assert contract["availability"]["available"] is True
+    assert contract["class_name"] == "PaperangP2"
+    assert contract["import_path"] == "from paperang_cli import PaperangP2"
+    assert contract["transport"] == "usb | ble"
+    assert contract["methods"]
+
+
+def test_p2_api_constructor_forwards_ble_transport_to_driver(monkeypatch, fake_driver):
+    captured = {}
+
+    def fake_get_driver(settings):
+        captured["settings"] = settings
+        return fake_driver
+
+    monkeypatch.setattr(registry, "get_driver", fake_get_driver)
+
+    printer = PaperangP2(transport="ble", address="04:7F:0E:3A:4F:31")
+
+    assert printer.settings.model == "paperang_p2"
+    assert printer.settings.transport == "ble"
+    assert printer.settings.macaddress == "04:7F:0E:3A:4F:31"
+    assert captured["settings"].model == "paperang_p2"
+    assert captured["settings"].transport == "ble"
+    assert captured["settings"].macaddress == "04:7F:0E:3A:4F:31"
+
+
+def test_p2_api_constructor_uses_p2_default_printer_width(monkeypatch, fake_driver):
+    monkeypatch.setattr(registry, "get_driver", lambda settings: fake_driver)
+
+    printer = PaperangP2()
+
+    assert printer.settings.printerwidth == 576
 
 
 def test_api_connect_runs_non_printing_readiness(monkeypatch, fake_driver):
@@ -165,3 +199,12 @@ def test_readme_and_p1_api_docs_cover_font_fit_surface():
     assert "font_fit=" in api_docs
     assert "feed_mm=" in api_docs
     assert "print_compose()" in api_docs and "font_fit=" in api_docs
+
+
+def test_p2_api_docs_include_hardware_smoke_checklist():
+    repo_root = Path(__file__).resolve().parents[1]
+    api_docs = (repo_root / "docs" / "usage" / "p2-api.md").read_text(encoding="utf-8")
+
+    assert "## Hardware Smoke Checklist" in api_docs
+    assert "paperang --json probe" in api_docs
+    assert 'PaperangP2(transport="ble"' in api_docs

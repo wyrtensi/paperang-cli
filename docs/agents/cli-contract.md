@@ -59,9 +59,10 @@ Click-level invocation failures, such as a missing argument, an invalid choice, 
 
 ## Supported Model And Transport
 
-The only supported model in the current release is:
+The current release supports these models:
 
 - `paperang_p1`
+- `paperang_p2`
 
 For `paperang_p1`:
 
@@ -71,9 +72,16 @@ For `paperang_p1`:
 - real BLE communication and physical printing have been tested only on Windows
 - Linux and macOS CI checks do not prove live hardware compatibility
 
-Do not assume that additional models or transports exist merely because the implementation has extension points.
+For `paperang_p2`:
 
-The `api list` command may also show planned placeholders such as `p2`. Those entries are not supported models and do not imply a live driver, transport, or printing path.
+- live printer communication supports USB and Bluetooth Low Energy (BLE)
+- the public Python facade exposes explicit transport selection with `usb` or `ble`
+- cable and generic `local` fallbacks are not separate supported transports in this project
+- physical validation for P2 USB and BLE has not been completed in this repository yet
+- real BLE communication and physical printing have been tested only on Windows for validated paths
+- Linux and macOS CI checks do not prove live hardware compatibility
+
+Do not assume that additional undocumented models or transports exist merely because the implementation has extension points.
 
 ## Config Resolution
 
@@ -91,7 +99,7 @@ Default paths:
 
 Use `paperang --json config show` to inspect the active settings, nested `print_defaults`, and resolved path.
 
-The active config may now contain a nested `print_defaults` object for P1-only styling defaults. CLI flags override those defaults for one invocation.
+The active config may now contain a nested `print_defaults` object for supported-model styling defaults. CLI flags override those defaults for one invocation.
 
 For agent-driven styling, built-in scenarios and shipped examples should be treated as reusable starting points, not as a whitelist and not as a hidden alternate render mode.
 
@@ -216,8 +224,8 @@ Stop and report any failure before printing.
 When an automation or agent needs to know what Python API surface is actually supported by the installed package:
 
 1. Run `paperang --json api list`.
-2. Choose the relevant model entry, such as `paperang --json api p1`.
-3. If a model such as `p2` is marked `coming-soon`, stop and report that it is unavailable in the installed package.
+2. Choose the relevant model entry, such as `paperang --json api p1` or `paperang --json api p2`.
+3. Read the supported constructor options, methods, styling support, and safety requirements for the selected model.
 4. Do not assume parity with `paperang-p2-lib` features that are not listed in the matching model contract.
 
 ### Text or paragraph
@@ -273,7 +281,7 @@ When an automation or agent needs to know what Python API surface is actually su
 | --- | --- | --- | --- |
 | `api list` | List known model-specific API entries and whether they are implemented in the current package version. | none | array of entries with `api`, `model`, `available`, `status`, nullable `class_name`, and nullable `planned_class_name` |
 | `api p1` | Show the supported `PaperangP1` Python API surface, constructor options, method list, styling support, safety requirements, and parity gaps. | none | `api`, `availability`, nullable `class_name`, nullable `planned_class_name`, nullable `import_path`, nullable `implementation_module`, `model`, nullable `transport`, `config_loading`, `constructor_options`, `methods`, `styling_support`, `safety`, `unsupported_parity_gaps` |
-| `api p2` | Show the `coming-soon` placeholder contract for a future P2 facade. | none | same fields as `api p1`, but marked unavailable with empty constructor and method lists |
+| `api p2` | Show the supported `PaperangP2` Python API surface, including explicit USB or BLE transport selection and current parity gaps. | none | same fields as `api p1`, populated for the live `PaperangP2` facade |
 
 ### Query commands
 

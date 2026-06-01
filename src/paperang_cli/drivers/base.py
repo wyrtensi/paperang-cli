@@ -16,6 +16,12 @@ class PrinterDriver(ABC):
     def __init__(self, settings: PaperangCliConfig):
         self.settings = settings
 
+    def local_transport_supported(self) -> bool:
+        return False
+
+    def local_transport_note(self) -> str | None:
+        return None
+
     @abstractmethod
     def discover(self) -> list[PrinterDevice]:
         raise NotImplementedError

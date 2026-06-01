@@ -36,7 +36,8 @@ Prefer `paperang` unless the host already has a conflicting executable with that
 - Ask for explicit approval before copies, retries, repeated prints, changed parameters, or any `print self-test`.
 - Real `print text`, `print paragraph`, `print image`, and `print compose` commands require `--allow-paper-use`.
 - `print self-test` requires `--allow-large-paper-use` and should be treated as a high-paper-consumption action.
-- Do not assume additional models exist yet. `paperang_p1` is the only supported model in the current release. The API catalog may also show planned placeholders such as `p2`, but those are unavailable.
+- Supported models in the current release are `paperang_p1` and `paperang_p2`.
+- `paperang_p1` uses BLE only. `paperang_p2` supports USB and BLE in software, but P2 hardware validation is still pending in this repository.
 
 Image printing should currently be treated as experimental. Agents should assume that physical output quality may still need manual validation and user confirmation.
 
@@ -81,5 +82,7 @@ If an agent is operating without explicit user approval for paper use, it should
 If a longer-lived Python process reuses the transport object after disconnect, the transport now attempts one reconnect before failing the next query.
 
 For `paperang_p1`, local/cable mode is not available in this project. Live communication currently uses Bluetooth only.
+
+For `paperang_p2`, live communication uses USB by default or BLE when configured. Treat both P2 live paths as not hardware-validated in this repository yet.
 
 Real BLE communication and physical printing have been tested only on Windows. Linux and macOS CI runs are compatibility checks, not hardware-validation evidence.

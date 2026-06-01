@@ -1,5 +1,6 @@
 {
   "model": "paperang_p1",
+  "transport": null,
   "macaddress": "04:7F:0E:3A:4F:31",
   "printerwidth": 384,
   "print_density": 75,

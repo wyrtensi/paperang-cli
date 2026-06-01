@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.1.7",
+  "package_version": "0.1.8",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
@@ -35,6 +35,26 @@
         "macos"
       ],
       "notes": "For paperang_p1, live printer communication uses BLE only. Do not attempt or document a local, cable, or USB fallback. Real BLE communication and physical printing have been tested only on Windows."
+    },
+    {
+      "id": "paperang_p2",
+      "status": "supported",
+      "transport": "usb | ble",
+      "supported_live_transports": [
+        "usb",
+        "ble"
+      ],
+      "unsupported_live_transports": [
+        "local",
+        "cable"
+      ],
+      "hardware_tested_platforms": [],
+      "compatibility_checks_without_hardware_validation": [
+        "windows",
+        "linux",
+        "macos"
+      ],
+      "notes": "For paperang_p2, live printer communication supports USB and BLE in software. Physical validation for P2 USB and BLE has not been completed in this repository yet. Real BLE communication and physical printing have been tested only on Windows for validated paths."
     }
   ],
   "config_resolution": [
@@ -1125,8 +1145,7 @@
   "recommended_agent_workflows": {
     "library_api": [
       "paperang --json api list",
-      "select the relevant model entry such as paperang --json api p1",
-      "if a model such as p2 is marked coming-soon, stop and report that it is unavailable",
+      "select the relevant model entry such as paperang --json api p1 or paperang --json api p2",
       "read the supported constructor options, methods, and safety requirements for the selected model",
       "do not assume parity with paperang-p2-lib features that are not listed there"
     ],

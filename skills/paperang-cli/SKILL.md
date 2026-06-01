@@ -1,6 +1,6 @@
 ---
 name: paperang-cli
-description: "Use when operating, automating, debugging, reviewing, or extending paperang-cli for Paperang P1 printers: BLE discovery, readiness queries, JSON output, configuration, dry-run validation, paper-use approval, image or compose printing, self-test caution, CLI contracts, rendering, drivers, protocol changes, tests, or release automation."
+description: "Use when operating, automating, debugging, reviewing, or extending paperang-cli for Paperang P1 or P2 printers: BLE or USB discovery/readiness, JSON output, configuration, dry-run validation, paper-use approval, image or compose printing, self-test caution, CLI contracts, rendering, drivers, protocol changes, tests, or release automation."
 license: MIT
 ---
 
@@ -44,12 +44,13 @@ Treat these rules as hard requirements:
 
 ## Supported Hardware
 
-The current release supports `paperang_p1` over BLE only.
+The current release supports `paperang_p1` over BLE and `paperang_p2` over USB or BLE.
 
-The API catalog may also list planned placeholders such as `p2`, but those are not available in this package version.
+`paperang_p2` support is implemented in software via `paperang-p2-lib`, but physical USB and BLE validation for P2 has not been completed in this repository yet.
 
-- Do not invent or document local, cable, or USB transport fallbacks.
-- Do not assume other models are available because extension points exist.
+- Do not invent or document local or cable fallbacks beyond the supported model transports.
+- For `paperang_p1`, do not invent a USB or local fallback.
+- Do not assume other undocumented models are available because extension points exist.
 - Ask for manual physical validation before repeated image or compose printing.
 
 ## Safe Readiness Sequence

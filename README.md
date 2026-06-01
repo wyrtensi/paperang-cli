@@ -11,26 +11,24 @@
 
 It provides a small, script-friendly CLI for discovering a printer, checking its status, and printing text or images with explicit safety gates. JSON output is available for automation and agent-driven workflows.
 
-The package also exposes a model-aware Python API surface. Today that means a supported `PaperangP1` facade plus a read-only API catalog that can mark future models such as `p2` as coming soon without pretending they already work.
+The package also exposes a model-aware Python API surface. Today that means supported `PaperangP1` and `PaperangP2` facades plus a read-only API catalog for inspecting each shipped model contract.
 
 ## Current Support
 
-The current release ships one supported model and one planned placeholder:
+The current release ships two supported models with different validation levels:
 
 | Printer | Transport | Status |
 | --- | --- | --- |
 | Paperang P1 | Bluetooth Low Energy (BLE) | Supported |
-| Paperang P2 | Local + Bluetooth Low Energy (BLE) | Coming soon, not available yet |
+| Paperang P2 | USB + Bluetooth Low Energy (BLE) | Supported in software; not physically validated in this repo yet |
 
 Local, cable, and USB data transports are not supported for Paperang P1 in this package.
 
-The `Paperang P2` row is a roadmap placeholder only. No P2 driver, CLI command set, or public Python facade is available in this package version yet.
-
-Real printer communication and physical printing have been tested only on Windows. CI runs compatibility checks on Linux and macOS, but those checks do not prove BLE or printer behavior on those platforms.
+Real printer communication and physical printing have been tested only on Windows for validated paths. CI runs compatibility checks on Linux and macOS, but those checks do not prove BLE, USB, or printer behavior on those platforms.
 
 ## Features
 
-- Discover nearby Paperang printers over BLE
+- Discover supported Paperang printers over BLE, or detect a connected P2 over USB
 - Check battery level, Bluetooth MAC address, and live printer status
 - Print short text or wrapped paragraphs
 - Print local images with sticker and photo conversion presets
@@ -39,7 +37,7 @@ Real printer communication and physical printing have been tested only on Window
 - Preview every print path with `--dry-run`
 - Emit machine-readable JSON with `--json`
 - Use explicit allow flags before any paper-consuming operation
-- Use the `PaperangP1` Python facade for library-style P1 automation
+- Use the `PaperangP1` and `PaperangP2` Python facades for library-style automation
 - Inspect model-specific API availability with `paperang api list`
 
 Image and composed printing are available, but remain experimental until you validate physical output on your printer.
@@ -77,6 +75,8 @@ npm install --global paperang-cli
 ```
 
 The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
+
+The published dependency set includes the upstream `paperang-p2-lib` runtime so P2 USB and BLE support install with the main package.
 
 The npm wrapper uses a `postinstall` lifecycle script to run `pip install` for the matching Python package version. See the [security policy](SECURITY.md#npm-postinstall-behavior) for details and an `--ignore-scripts` audit path.
 
@@ -274,18 +274,20 @@ When a dry-run uses length-aware styling, the JSON result can include `estimated
 
 ## Python API
 
-`paperang-cli` also ships a model-aware Python API layer. Right now the only implemented public facade is `PaperangP1`, while `p2` is intentionally exposed only as a `coming-soon` placeholder in the read-only API catalog.
+`paperang-cli` also ships model-aware Python facades for `PaperangP1` and `PaperangP2`.
 
 ```python
-from paperang_cli import PaperangP1
+from paperang_cli import PaperangP1, PaperangP2
 
-printer = PaperangP1(address="04:7F:0E:3A:4F:31")
-printer.connect()
-status = printer.get_status()
-preview = printer.print_text("Hello from Paperang", dry_run=True)
+p1 = PaperangP1(address="04:7F:0E:3A:4F:31")
+p2 = PaperangP2(transport="usb")
+
+p1.connect()
+status = p2.get_status()
+preview = p2.print_text("Hello from Paperang", dry_run=True)
 ```
 
-See [Paperang P1 Python API](docs/usage/p1-api.md) for constructor options, supported methods, safety semantics, and parity notes versus `paperang-p2-lib`.
+See [Paperang P1 Python API](docs/usage/p1-api.md) for the P1 facade and [Paperang P2 Python API](docs/usage/p2-api.md) for transport selection, supported methods, safety semantics, and current parity gaps versus `paperang-p2-lib`.
 
 Use the installed CLI to inspect what is actually available in the current package version:
 
@@ -395,7 +397,7 @@ The self-test dry-run only validates the CLI path and warning payload. It does n
 | `paperang discover` | Scan for nearby supported printers |
 | `paperang api list` | List known model-specific Python API entries and their availability |
 | `paperang api p1` | Show the supported `PaperangP1` Python API contract |
-| `paperang api p2` | Show the `coming-soon` placeholder contract for a future P2 API |
+| `paperang api p2` | Show the supported `PaperangP2` Python API contract |
 | `paperang battery` | Query the current battery percentage |
 | `paperang mac` | Query the printer-reported Bluetooth MAC address |
 | `paperang status` | Query live printer information |
@@ -454,10 +456,12 @@ See [Configuration](docs/usage/configuration.md) for the full schema.
 
 ## Project History And Acknowledgements
 
-This standalone CLI builds on earlier reverse engineering and Paperang P1 control work by:
+The Paperang P1 logic in this standalone CLI builds on earlier reverse engineering and printer-control work by:
 
 - `ihc童鞋@提不起劲`
 - `BroncoTc`
+
+Paperang P2 support in this repository uses `mdj2812/paperang-p2-lib` and references `mdj2812/paperang-p2-usb`. The USB and BLE code paths are implemented in software, but this repository has not yet physically validated P2 hardware on either path.
 
 The current `paperang-cli` package is maintained by `wyrtensi`.
 

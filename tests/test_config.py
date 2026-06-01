@@ -47,6 +47,8 @@ def test_write_example_config_creates_file(tmp_path):
     payload = json.loads(written.read_text(encoding="utf-8"))
     assert written == destination
     assert payload["model"] == "paperang_p1"
+    assert "transport" in payload
+    assert payload["transport"] is None
     assert payload["calibration"]["printable_width_mm"] == 44.0
     assert payload["calibration"]["advance_mm_per_px"] == 0.1217
     assert payload["print_defaults"]["text"]["font_family"] == "sans"
@@ -76,6 +78,41 @@ def test_load_config_accepts_partial_json_mapping(tmp_path):
     assert settings.post_print_feed_mm == 5.0
     assert settings.print_defaults.text.font_family == "sans"
     assert settings.print_defaults.compose.layout == "text-above"
+
+
+def test_load_config_accepts_p2_usb_transport(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+                "transport": "usb",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, exists = config_module.load_config(config_path)
+
+    assert exists is True
+    assert settings.model == "paperang_p2"
+    assert settings.transport == "usb"
+
+
+def test_load_config_uses_p2_default_printer_width(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.printerwidth == 576
 
 
 def test_load_config_accepts_partial_nested_print_defaults(tmp_path):

@@ -41,7 +41,7 @@ Typical data returned:
 - API identifier such as `p1` or `p2`
 - matching model id
 - whether the facade is available in the current package version
-- current status such as `available` or `coming-soon`
+- current status such as `available`
 - current or planned facade class name
 
 ## `api p1`
@@ -68,7 +68,7 @@ Typical data returned:
 
 ## `api p2`
 
-Non-printing command that shows the placeholder contract for a future `PaperangP2`-style facade.
+Non-printing command that shows the supported `PaperangP2` Python API surface exposed by the package.
 
 Examples:
 
@@ -79,11 +79,12 @@ paperang --json api p2
 
 Typical data returned:
 
-- `coming-soon` availability status
-- explicit note that no public P2 facade is implemented yet
-- planned facade name
-- empty constructor and method lists
-- parity gaps that explain what is still unavailable
+- availability information for the model-specific facade
+- import path for the public class
+- transport selection details for `usb` and `ble`
+- constructor options and defaults
+- supported high-level methods
+- parity gaps that explain what is still unavailable or unvalidated
 
 ## `status`
 
@@ -151,7 +152,7 @@ Typical data returned:
 
 ## `probe`
 
-Non-printing command that runs the usual live BLE status query plus the printer-reported Bluetooth MAC query and returns them in one summary payload.
+Non-printing command that runs the usual live status query for the selected driver plus the printer-reported Bluetooth MAC query and returns them in one summary payload.
 
 Example:
 
@@ -174,7 +175,7 @@ Typical data returned:
 - power-off timeout
 - hardware info
 - printer-reported Bluetooth MAC address
-- explicit note that local/cable mode is not supported for `paperang_p1` in this project
+- explicit local-transport support fields for the selected model
 
 ## `discover`
 
@@ -186,6 +187,8 @@ Example:
 paperang discover
 paperang --json discover
 ```
+
+For `paperang_p1` and `paperang_p2` over BLE, this scans nearby devices. For `paperang_p2` over USB, it reports the connected USB printer when the upstream backend can open it.
 
 ## `print text`
 
@@ -394,13 +397,13 @@ Example `product-style.json`:
 
 When a dry-run or real print returns length-aware metadata, JSON output now includes estimated paper length information and whether the configured length budget was met.
 - `--conversion` remains available as a lower-level override for manual experimentation and debugging
-- `--orientation rotate-90-cw|rotate-90-ccw` rotates the source image before it is fit to the fixed P1 print width
+- `--orientation rotate-90-cw|rotate-90-ccw` rotates the source image before it is fit to the active printer width
 
 Current note:
 
 - this path should be treated with the same caution as `print image`
 - `--dry-run` validates rendering and packaging, not the final physical result
-- for `paperang_p1`, real hardware communication still goes through Bluetooth only
+- transport behavior remains model-specific: `paperang_p1` uses BLE only, while `paperang_p2` uses USB by default or BLE when configured
 
 ## `print self-test`
 
@@ -450,9 +453,9 @@ paperang config init --path .\my-printer.json
 
 ## Python Library Note
 
-The CLI and the Python `PaperangP1` facade intentionally share the same driver, render, and safety logic.
+The CLI and the Python facades intentionally share the same driver, render, and safety logic.
 
-Use `paperang api list` to see which model-specific facades are implemented in the installed package. Use `paperang api p1` or `paperang api p2` when you want a quick read-only view of one model entry. Use [Paperang P1 Python API](p1-api.md) for the full library guide.
+Use `paperang api list` to see which model-specific facades are implemented in the installed package. Use `paperang api p1` or `paperang api p2` when you want a quick read-only view of one model entry. Use [Paperang P1 Python API](p1-api.md) and [Paperang P2 Python API](p2-api.md) for the full library guides.
 
 ## Exit Behavior
 
@@ -468,3 +471,5 @@ The standalone BLE transport now attempts one reconnect when a command is issued
 This is mainly useful for protocol reuse in a longer-lived Python process. Ordinary CLI invocations already start from a fresh process and connection.
 
 For `paperang_p1`, the standalone project currently supports Bluetooth only. A cable/local transport is not exposed because it has not been validated as a usable data path.
+
+For `paperang_p2`, the standalone project supports USB and BLE in software. USB is the default transport when the model resolves to P2, while BLE can be selected explicitly. P2 hardware validation is still pending in this repository.

@@ -45,7 +45,7 @@ def api_p1_command(ctx: click.Context) -> None:
 @api_group.command("p2")
 @click.pass_context
 def api_p2_command(ctx: click.Context) -> None:
-    """Show the placeholder contract for a future Paperang P2 Python API."""
+    """Show the supported Paperang P2 Python API contract."""
 
     emit_result(
         ctx,

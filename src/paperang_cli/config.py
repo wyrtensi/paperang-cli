@@ -12,6 +12,11 @@ from typing import Any
 from paperang_cli.errors import ConfigError
 
 DEFAULT_DISCOVERY_NAMES = ["MiaoMiaoJi", "Paperang", "Paperang_P2S"]
+MODEL_DEFAULT_PRINTER_WIDTHS = {
+    "paperang_p1": 384,
+    "paperang_p2": 576,
+}
+VALID_TRANSPORTS = {"ble", "usb"}
 VALID_FONT_FAMILIES = {"sans", "mono", "serif"}
 VALID_ORIENTATIONS = {"normal", "rotate-90-cw", "rotate-90-ccw"}
 VALID_IMAGE_MODES = {"sticker", "photo"}
@@ -296,6 +301,7 @@ def _optional_mapping(value: Any, field_name: str) -> dict[str, Any] | None:
 @dataclass(slots=True)
 class PaperangCliConfig:
     model: str = "paperang_p1"
+    transport: str | None = None
     macaddress: str = ""
     printerwidth: int = 384
     print_density: int = 75
@@ -308,10 +314,13 @@ class PaperangCliConfig:
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "PaperangCliConfig":
         defaults = cls()
+        model = str(data.get("model", defaults.model))
+        default_printer_width = MODEL_DEFAULT_PRINTER_WIDTHS.get(model, defaults.printerwidth)
         config = cls(
-            model=str(data.get("model", defaults.model)),
+            model=model,
+            transport=_normalize_string_choice(data.get("transport")) if data.get("transport") is not None else None,
             macaddress=str(data.get("macaddress", defaults.macaddress)),
-            printerwidth=int(data.get("printerwidth", defaults.printerwidth)),
+            printerwidth=int(data.get("printerwidth", default_printer_width)),
             print_density=int(data.get("print_density", defaults.print_density)),
             post_print_feed_mm=float(data.get("post_print_feed_mm", defaults.post_print_feed_mm)),
             discovery_names=list(data.get("discovery_names", DEFAULT_DISCOVERY_NAMES)),
@@ -323,6 +332,10 @@ class PaperangCliConfig:
         return config
 
     def validate(self) -> None:
+        if self.transport is not None and self.transport not in VALID_TRANSPORTS:
+            raise ConfigError(f"transport must be one of: {', '.join(sorted(VALID_TRANSPORTS))}")
+        if self.model == "paperang_p1" and self.transport == "usb":
+            raise ConfigError("Unsupported transport 'usb' for model 'paperang_p1'")
         if self.printerwidth <= 0:
             raise ConfigError("printerwidth must be greater than zero")
         if self.print_density < 0 or self.print_density > 255:

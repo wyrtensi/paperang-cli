@@ -2,9 +2,9 @@
 
 ## Current State
 
-Only `paperang_p1` is implemented.
+`paperang_p1` and `paperang_p2` are implemented.
 
-That is a deliberate constraint, not an accidental omission.
+Use them as the current reference implementations: P1 is the validated BLE baseline, while P2 shows the software-supported USB/BLE integration pattern that still needs repository-level hardware validation.
 
 ## Extension Strategy
 

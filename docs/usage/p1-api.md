@@ -10,9 +10,9 @@ The public facade is intentionally thin:
 - it keeps the same safety gates as the CLI
 - it does not create a second rendering, BLE, or printing path
 
-Internally, the facade now lives under the model-specific module `paperang_cli.api.p1`. That keeps the package layout ready for future model-specific facades such as `paperang_cli.api.p2` instead of treating one flat `api.py` file as the permanent global API.
+Internally, the facade now lives under the model-specific module `paperang_cli.api.p1`. That keeps the package layout model-aware alongside the live `paperang_cli.api.p2` facade instead of treating one flat `api.py` file as the permanent global API.
 
-At the moment, `paperang_cli.api.p2` is intentionally not implemented. The installed CLI exposes it only as a `coming-soon` placeholder through `paperang api p2` so the package can be explicit about what is and is not available.
+If you need the P2 surface, use [Paperang P2 Python API](p2-api.md).
 
 Import it with:
 
@@ -213,6 +213,6 @@ paperang --json api list
 paperang --json api p1
 ```
 
-That output is the supported read-only contract for the public `PaperangP1` facade. If you also inspect `paperang --json api p2`, the current package will explicitly report that P2 is still `coming-soon` and unavailable.
+That output is the supported read-only contract for the public `PaperangP1` facade. If you also inspect `paperang --json api p2`, the current package reports the live `PaperangP2` contract. Use [Paperang P2 Python API](p2-api.md) for transport selection and P2-specific caveats.
 
 Use this page as the fuller library guide for convenience properties, address resolution, and usage notes that do not need to appear in the compact CLI contract output.

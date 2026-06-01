@@ -18,6 +18,12 @@ class FakeDriver:
     def __init__(self):
         self.calls = []
 
+    def local_transport_supported(self):
+        return False
+
+    def local_transport_note(self):
+        return "Paperang P1 currently has no validated cable/local data mode in this project. Use Bluetooth for live printer communication."
+
     def discover(self):
         self.calls.append(("discover", {}))
         return [PrinterDevice(name="Paperang", address="AA:BB:CC:DD:EE:FF", rssi=-42)]

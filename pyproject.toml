@@ -26,10 +26,11 @@ classifiers = [
     "Topic :: System :: Hardware :: Hardware Drivers",
 ]
 dependencies = [
-    "bleak>=0.21.1",
+    "bleak>=0.22.0",
     "click>=8.1.7",
     "numpy>=1.26.0",
     "Pillow>=10.0.0",
+    "paperang-p2-lib>=0.4.0rc3",
     "scikit-image>=0.20.0",
     "scipy>=1.11.0",
     "numba>=0.58.0",

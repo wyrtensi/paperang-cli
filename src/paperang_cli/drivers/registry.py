@@ -6,9 +6,11 @@ from paperang_cli.config import PaperangCliConfig
 from paperang_cli.errors import ConfigError
 from paperang_cli.drivers.base import PrinterDriver
 from paperang_cli.drivers.paperang_p1 import PaperangP1Driver
+from paperang_cli.drivers.paperang_p2 import PaperangP2Driver
 
 DRIVER_REGISTRY: dict[str, type[PrinterDriver]] = {
     "paperang_p1": PaperangP1Driver,
+    "paperang_p2": PaperangP2Driver,
 }
 
 

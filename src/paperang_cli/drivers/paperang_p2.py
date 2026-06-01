@@ -1,4 +1,4 @@
-"""Paperang P1 driver implementation."""
+"""Paperang P2 driver implementation."""
 
 from __future__ import annotations
 
@@ -19,7 +19,9 @@ from paperang_cli.render import (
 SELF_TEST_WARNING = "The built-in self-test consumes substantially more paper than normal text or image prints."
 IMAGE_PRINT_WARNING = "Image printing is more experimental than text printing; conversion quality and physical output still need manual validation on real hardware."
 COMPOSE_PRINT_WARNING = "Combined text-and-image printing uses the same image conversion path as image printing; validate physical output on real hardware before relying on the layout."
-LOCAL_TRANSPORT_NOTE = "Paperang P1 currently has no validated cable/local data mode in this project. Use Bluetooth for live printer communication."
+USB_DEVICE_ADDRESS = "usb://paperang_p2"
+USB_DEVICE_DETAILS = "USB VID=0x4348 PID=0x5584"
+LOCAL_TRANSPORT_NOTE = "Paperang P2 supports USB transport in this project. BLE is also available when transport='ble'."
 
 
 def _resolved_bool_style(effective_style: dict[str, object], key: str, *, default: bool) -> bool:
@@ -31,48 +33,67 @@ def _resolved_bool_style(effective_style: dict[str, object], key: str, *, defaul
     raise DriverError(f"resolved_style.{key} must be a boolean")
 
 
-class PaperangP1Driver(PrinterDriver):
-    model_id = "paperang_p1"
-    transport = "ble"
+class PaperangP2Driver(PrinterDriver):
+    model_id = "paperang_p2"
+    transport = "multi"
 
     def local_transport_supported(self) -> bool:
-        return False
+        return True
 
     def local_transport_note(self) -> str | None:
         return LOCAL_TRANSPORT_NOTE
 
     def discover(self) -> list[PrinterDevice]:
-        from paperang_cli.protocol.hardware_bleak import discover_paperang_devices
+        if self._resolved_transport() == "ble":
+            from paperang_cli.protocol.hardware_bleak import discover_paperang_devices
 
-        devices = discover_paperang_devices(self.settings.discovery_names)
+            devices = discover_paperang_devices(self.settings.discovery_names)
+            return [
+                PrinterDevice(
+                    name=device.name or "Paperang P2",
+                    address=device.address,
+                    rssi=getattr(device, "rssi", None),
+                    details=str(getattr(device, "details", "")) or None,
+                )
+                for device in devices
+            ]
+
+        printer = self._build_printer(None)
+        try:
+            if not printer.connect():
+                return []
+        except Exception:
+            return []
+        finally:
+            try:
+                printer.disconnect()
+            except Exception:
+                pass
+
         return [
             PrinterDevice(
-                name=device.name or "Unknown",
-                address=device.address,
-                rssi=getattr(device, "rssi", None),
-                details=str(getattr(device, "details", "")) or None,
+                name="Paperang P2",
+                address=USB_DEVICE_ADDRESS,
+                details=USB_DEVICE_DETAILS,
             )
-            for device in devices
         ]
 
     def status(self, address: str | None = None) -> PrinterStatus:
-        printer = self._build_printer(address)
-        if not printer.connected:
-            raise PrinterNotFoundError("Unable to connect to a supported Paperang P1 printer")
-
-        resolved_address = self._resolved_address(printer, address)
+        printer = self._connect_printer(address)
+        resolved_address = self._resolved_address(address)
         try:
-            firmware = self._payload_text(printer.queryVersionFromBt())
-            serial = self._payload_text(printer.querySNFromBt())
-            battery = self._payload_int(printer.queryBatteryStatus())
-            hardware = self._payload_hex(printer.queryHardwareInfo())
-            density = self._payload_int(printer.queryDensity())
-            power_off = self._payload_int(printer.queryPowerOffTime())
+            firmware = printer.get_version()
+            serial = printer.get_sn()
+            battery = printer.get_battery()
+            hardware = printer.get_hw_info()
+            density = printer.get_heat_density()
+            power_off = printer.get_power_down_time()
+            reported_model = printer.get_model()
 
             return PrinterStatus(
                 model=self.model_id,
                 address=resolved_address,
-                transport=self.transport,
+                transport=self._resolved_transport(),
                 connected=True,
                 battery_percent=battery,
                 serial_number=serial,
@@ -84,23 +105,21 @@ class PaperangP1Driver(PrinterDriver):
                     "firmware": firmware or "",
                     "serial_number": serial or "",
                     "hardware_info": hardware or "",
+                    "reported_model": reported_model or "",
                 },
             )
         finally:
             printer.disconnect()
 
     def battery(self, address: str | None = None) -> BatteryStatus:
-        printer = self._build_printer(address)
-        if not printer.connected:
-            raise PrinterNotFoundError("Unable to connect to a supported Paperang P1 printer")
-
-        resolved_address = self._resolved_address(printer, address)
+        printer = self._connect_printer(address)
+        resolved_address = self._resolved_address(address)
         try:
-            battery = self._payload_int(printer.queryBatteryStatus())
+            battery = printer.get_battery()
             return BatteryStatus(
                 model=self.model_id,
                 address=resolved_address,
-                transport=self.transport,
+                transport=self._resolved_transport(),
                 connected=True,
                 battery_percent=battery,
             )
@@ -108,17 +127,14 @@ class PaperangP1Driver(PrinterDriver):
             printer.disconnect()
 
     def bluetooth_mac(self, address: str | None = None) -> BluetoothMacStatus:
-        printer = self._build_printer(address)
-        if not printer.connected:
-            raise PrinterNotFoundError("Unable to connect to a supported Paperang P1 printer")
-
-        resolved_address = self._resolved_address(printer, address)
+        printer = self._connect_printer(address)
+        resolved_address = self._resolved_address(address)
         try:
-            bluetooth_mac = self._payload_mac(printer.queryBluetoothMac())
+            bluetooth_mac = self._normalize_bluetooth_mac(printer.get_bt_mac())
             return BluetoothMacStatus(
                 model=self.model_id,
                 address=resolved_address,
-                transport=self.transport,
+                transport=self._resolved_transport(),
                 connected=True,
                 bluetooth_mac=bluetooth_mac,
             )
@@ -195,7 +211,7 @@ class PaperangP1Driver(PrinterDriver):
             advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
             printable_width_mm=self.settings.calibration.printable_width_mm,
         )
-        return self._send_bitstream_job(
+        return self._send_bitmap_job(
             bitstream=rendered.bitstream,
             operation="paragraph" if paragraph else "text",
             paragraph=paragraph,
@@ -250,7 +266,7 @@ class PaperangP1Driver(PrinterDriver):
             advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
             printable_width_mm=self.settings.calibration.printable_width_mm,
         )
-        return self._send_bitstream_job(
+        return self._send_bitmap_job(
             bitstream=rendered.bitstream,
             operation="image",
             feed_mm=resolved_feed_mm,
@@ -326,7 +342,7 @@ class PaperangP1Driver(PrinterDriver):
             advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
             mode=resolved_mode,
         )
-        return self._send_bitstream_job(
+        return self._send_bitmap_job(
             bitstream=rendered.bitstream,
             operation="compose",
             feed_mm=resolved_feed_mm,
@@ -353,7 +369,7 @@ class PaperangP1Driver(PrinterDriver):
         if dry_run:
             return PrintResult(
                 model=self.model_id,
-                address=address or self.settings.macaddress or None,
+                address=self._resolved_address(address),
                 operation="self-test",
                 dry_run=True,
                 warning=SELF_TEST_WARNING,
@@ -362,13 +378,10 @@ class PaperangP1Driver(PrinterDriver):
         if not allow_large_paper_use:
             raise SafetyError("Self-test consumes substantially more paper and requires --allow-large-paper-use")
 
-        printer = self._build_printer(address)
-        if not printer.connected:
-            raise PrinterNotFoundError("Unable to connect to a supported Paperang P1 printer")
-
-        resolved_address = self._resolved_address(printer, address)
+        printer = self._connect_printer(address)
+        resolved_address = self._resolved_address(address)
         try:
-            printer.sendSelfTestToBt()
+            printer.print_test_page()
             return PrintResult(
                 model=self.model_id,
                 address=resolved_address,
@@ -379,25 +392,62 @@ class PaperangP1Driver(PrinterDriver):
         finally:
             printer.disconnect()
 
+    def _connect_printer(self, address: str | None):
+        printer = self._build_printer(address)
+        try:
+            connected = printer.connect()
+        except Exception as exc:
+            raise PrinterNotFoundError(
+                f"Unable to connect to a supported Paperang P2 printer over {self._resolved_transport()}"
+            ) from exc
+
+        if not connected:
+            raise PrinterNotFoundError(
+                f"Unable to connect to a supported Paperang P2 printer over {self._resolved_transport()}"
+            )
+
+        return printer
+
     def _build_printer(self, address: str | None):
-        from paperang_cli.protocol.hardware_bleak import Paperang
+        try:
+            from paperang.printer._printing import PaperangP2
+            from paperang.transport._ble import BleTransport
+            from paperang.transport._usb import UsbTransport
+        except ImportError as exc:
+            raise DriverError(
+                "Paperang P2 support requires the upstream 'paperang-p2-lib' package to be installed"
+            ) from exc
 
-        return Paperang(
-            address or self.settings.macaddress or None,
-            print_density=self.settings.print_density,
-            post_print_feed_mm=self.settings.post_print_feed_mm,
-            valid_names=self.settings.discovery_names,
-        )
+        if self._resolved_transport() == "ble":
+            transport = BleTransport(
+                address=address or self.settings.macaddress or None,
+                name=self._ble_scan_name(),
+            )
+        else:
+            transport = UsbTransport()
 
-    @staticmethod
-    def _resolved_address(printer, requested_address: str | None) -> str:
-        return getattr(getattr(printer, "bleak_printer", None), "address", None) or requested_address or "unknown"
+        return PaperangP2(transport=transport)
+
+    def _ble_scan_name(self) -> str:
+        if not self.settings.discovery_names:
+            return "Paperang"
+        if "Paperang" in self.settings.discovery_names:
+            return "Paperang"
+        return self.settings.discovery_names[0]
+
+    def _resolved_transport(self) -> str:
+        return self.settings.transport or "usb"
+
+    def _resolved_address(self, requested_address: str | None) -> str:
+        if self._resolved_transport() == "usb":
+            return requested_address or USB_DEVICE_ADDRESS
+        return requested_address or self.settings.macaddress or "unknown"
 
     def _require_paper_use(self, *, allow_paper_use: bool, dry_run: bool) -> None:
         if not dry_run and not allow_paper_use:
             raise SafetyError("Real printing requires --allow-paper-use")
 
-    def _send_bitstream_job(
+    def _send_bitmap_job(
         self,
         *,
         bitstream: bytes,
@@ -417,11 +467,12 @@ class PaperangP1Driver(PrinterDriver):
         styling: dict | None = None,
     ) -> PrintResult:
         feed_units = feed_units_from_mm(feed_mm)
+        resolved_address = self._resolved_address(address)
 
         if dry_run:
             return PrintResult(
                 model=self.model_id,
-                address=address or self.settings.macaddress or None,
+                address=resolved_address,
                 operation=operation,
                 dry_run=True,
                 feed_mm=feed_mm,
@@ -439,14 +490,14 @@ class PaperangP1Driver(PrinterDriver):
                 styling=styling,
             )
 
-        printer = self._build_printer(address)
-        if not printer.connected:
-            raise PrinterNotFoundError("Unable to connect to a supported Paperang P1 printer")
-
-        resolved_address = self._resolved_address(printer, address)
+        printer = self._connect_printer(address)
         try:
-            result = printer.sendImageToBt(bitstream, feed_lines=feed_units)
-            battery_after = self._payload_int(result)
+            printer.set_paper_type(0)
+            printer.set_heat_density(int(self.settings.print_density))
+            printer.print_bitmap(bitstream, width_bytes=max(1, self.settings.printerwidth // 8))
+            if feed_units > 0:
+                printer.feed(feed_units)
+            battery_after = printer.get_battery()
             return PrintResult(
                 model=self.model_id,
                 address=resolved_address,
@@ -471,53 +522,13 @@ class PaperangP1Driver(PrinterDriver):
             printer.disconnect()
 
     @staticmethod
-    def _payload(result):
-        if not result:
-            return b""
-        _, parsed_packets = result
-        if not parsed_packets:
-            return b""
-        return bytes(parsed_packets[0].payload)
-
-    @classmethod
-    def _payload_int(cls, result):
-        payload = cls._payload(result)
-        if not payload:
-            return None
-        return int(payload[0])
-
-    @classmethod
-    def _payload_text(cls, result):
-        payload = cls._payload(result)
-        if not payload:
-            return None
-        decoded = payload.decode("ascii", errors="ignore").strip("\x00")
-        if decoded and all(31 < ord(char) < 127 for char in decoded):
-            return decoded
-        return payload.hex()
-
-    @classmethod
-    def _payload_hex(cls, result):
-        payload = cls._payload(result)
-        if not payload:
-            return None
-        return payload.hex()
-
-    @classmethod
-    def _payload_mac(cls, result):
-        payload = cls._payload(result)
-        if not payload:
+    def _normalize_bluetooth_mac(value: str | None) -> str | None:
+        if not value:
             return None
 
-        decoded = payload.decode("ascii", errors="ignore").strip("\x00").strip()
-        normalized = decoded.replace("-", ":").upper()
-        if normalized:
-            if len(normalized) == 12 and all(char in "0123456789ABCDEF" for char in normalized):
-                return ":".join(normalized[index:index + 2] for index in range(0, 12, 2))
-            if len(normalized) == 17 and all(char in "0123456789ABCDEF:" for char in normalized):
-                return normalized
-
-        if len(payload) == 6:
-            return ":".join(f"{byte:02X}" for byte in payload)
-
-        return payload.hex()
+        normalized = value.strip().replace("-", ":").upper()
+        if len(normalized) == 12 and all(char in "0123456789ABCDEF" for char in normalized):
+            return ":".join(normalized[index:index + 2] for index in range(0, 12, 2))
+        if len(normalized) == 17 and all(char in "0123456789ABCDEF:" for char in normalized):
+            return normalized
+        return value

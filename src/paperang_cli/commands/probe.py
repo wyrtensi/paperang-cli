@@ -8,8 +8,6 @@ from paperang_cli.drivers import registry
 from paperang_cli.models import ProbeResult
 from paperang_cli.output import cli_error_boundary, emit_result
 
-LOCAL_TRANSPORT_NOTE = "Paperang P1 currently has no validated cable/local data mode in this project. Use Bluetooth for live printer communication."
-
 
 @click.command("probe")
 @click.option("--address", type=str, help="Optional printer MAC address override.")
@@ -20,6 +18,8 @@ def probe_command(ctx: click.Context, address: str | None) -> None:
         driver = registry.get_driver(ctx.obj["settings"])
         status = driver.status(address=address)
         bluetooth_mac = driver.bluetooth_mac(address=address)
+        local_transport_supported = driver.local_transport_supported() if hasattr(driver, "local_transport_supported") else False
+        local_transport_note = driver.local_transport_note() if hasattr(driver, "local_transport_note") else None
         result = ProbeResult(
             model=status.model,
             address=status.address,
@@ -32,8 +32,8 @@ def probe_command(ctx: click.Context, address: str | None) -> None:
             density=status.density,
             power_off_time=status.power_off_time,
             bluetooth_mac=bluetooth_mac.bluetooth_mac,
-            local_transport_supported=False,
-            local_transport_note=LOCAL_TRANSPORT_NOTE,
+            local_transport_supported=local_transport_supported,
+            local_transport_note=local_transport_note,
             raw=dict(status.raw),
         )
         emit_result(

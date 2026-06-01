@@ -21,6 +21,7 @@ This is intentional. It keeps installed packages writable without using `site-pa
 ```json
 {
   "model": "paperang_p1",
+  "transport": null,
   "macaddress": "04:7F:0E:3A:4F:31",
   "printerwidth": 384,
   "print_density": 75,
@@ -107,17 +108,25 @@ This is intentional. It keeps installed packages writable without using `site-pa
 
 Logical printer model identifier used by the driver registry.
 
-In the current release, the only valid value is `paperang_p1`.
+In the current release, valid values are `paperang_p1` and `paperang_p2`.
+
+### `transport`
+
+Optional live-transport override.
+
+- For `paperang_p1`, keep this unset or use `ble`.
+- For `paperang_p2`, use `usb` or `ble`.
+- If `model` is `paperang_p2` and `transport` is omitted, the runtime defaults to `usb`.
 
 ### `macaddress`
 
 Optional BLE MAC address. When present, the CLI can connect directly instead of scanning.
 
-For `paperang_p1`, this project currently exposes BLE only. There is no supported local/cable transport setting in the standalone config.
+For `paperang_p1`, this project currently exposes BLE only. For `paperang_p2`, this field matters when transport resolves to BLE and is ignored for the default USB path.
 
 ### `printerwidth`
 
-Current render width in pixels. For P1 the practical default is `384`.
+Current render width in pixels. For P1 the practical default is `384`. For P2, the model-specific default is `576` when `printerwidth` is omitted.
 
 ### `print_density`
 
@@ -144,7 +153,7 @@ BLE device names accepted during discovery.
 
 ### `print_defaults`
 
-Optional nested render defaults for P1 print jobs.
+Optional nested render defaults for supported print jobs.
 
 Active milestone-1 fields:
 
@@ -212,6 +221,8 @@ The default Paperang P1 profile currently reflects the proven working behavior f
 - ordinary text and paragraph orientation `normal`
 - ordinary image mode `sticker`
 
+For `paperang_p2`, the runtime keeps the same density and feed defaults but switches the default render width to `576` and resolves transport to `usb` unless you explicitly choose BLE.
+
 ## Font Families And Rotation
 
 The current release intentionally limits font selection to generic families so configuration stays portable:
@@ -235,7 +246,7 @@ Rotated `print compose` is not implemented yet.
 1. Run `paperang config init`.
 2. Open the reported config path.
 3. Replace `macaddress` with your real printer address.
-4. Keep `model` as `paperang_p1` for now.
+4. Keep `model` as `paperang_p1` for BLE P1 use, or switch to `paperang_p2` and set `transport` to `usb` or `ble` when configuring a P2.
 5. Only change `post_print_feed_mm` if you want more or less paper exit after text.
 6. Add `print_defaults` only after you have a working dry-run baseline.
 7. Measure and tune `calibration` if you need trustworthy dry-run centimeter estimates.

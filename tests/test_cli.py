@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+
 from click.testing import CliRunner
 from PIL import Image
 
 from paperang_cli.cli import cli
 from paperang_cli.drivers import registry
+from paperang_cli.models import BluetoothMacStatus, PrinterStatus
 
 
 def test_cli_help():
@@ -74,6 +77,48 @@ def test_probe_json(monkeypatch, fake_driver):
     assert result.exit_code == 0
     assert '"bluetooth_mac": "AA:BB:CC:DD:EE:FF"' in result.output
     assert '"local_transport_supported": false' in result.output
+
+
+def test_probe_json_reports_local_transport_support_for_p2_usb(monkeypatch):
+    class FakeP2Driver:
+        def status(self, address=None):
+            return PrinterStatus(
+                model="paperang_p2",
+                address=address or "usb://paperang_p2",
+                transport="usb",
+                connected=True,
+                battery_percent=91,
+                serial_number="P2TEST",
+                firmware_version="2.0.0",
+                hardware_info="abcdef01",
+                density=75,
+                power_off_time=120,
+            )
+
+        def bluetooth_mac(self, address=None):
+            return BluetoothMacStatus(
+                model="paperang_p2",
+                address=address or "usb://paperang_p2",
+                transport="usb",
+                connected=True,
+                bluetooth_mac="AA:BB:CC:DD:EE:FF",
+            )
+
+        def local_transport_supported(self):
+            return True
+
+        def local_transport_note(self):
+            return "Paperang P2 supports USB transport in this project. BLE is also available when transport='ble'."
+
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", lambda settings: FakeP2Driver())
+
+    result = runner.invoke(cli, ["--json", "probe"])
+
+    assert result.exit_code == 0
+    assert '"model": "paperang_p2"' in result.output
+    assert '"transport": "usb"' in result.output
+    assert '"local_transport_supported": true' in result.output
 
 
 def test_print_text_dry_run_json(monkeypatch, fake_driver):
@@ -216,6 +261,27 @@ def test_print_paragraph_style_json_reports_missing_file_as_config_error(monkeyp
     assert '"status": "error"' in result.output
     assert '"code": "CONFIG_ERROR"' in result.output
     assert 'Failed to read style JSON' in result.output
+
+
+def test_cli_rejects_p1_usb_transport_as_unsupported(tmp_path):
+    runner = CliRunner()
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p1",
+                "transport": "usb",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(cli, ["--json", "--config", str(config_path), "config", "show"])
+
+    assert result.exit_code == 2
+    assert '"status": "error"' in result.output
+    assert '"code": "CONFIG_ERROR"' in result.output
+    assert "Unsupported transport 'usb' for model 'paperang_p1'" in result.output
 
 
 def test_print_image_dry_run_json(monkeypatch, fake_driver, tmp_path):
@@ -467,26 +533,28 @@ def test_api_list_json():
     assert result.exit_code == 0
     assert '"api": "p1"' in result.output
     assert '"api": "p2"' in result.output
-    assert '"status": "coming-soon"' in result.output
+    assert '"status": "available"' in result.output
 
 
-def test_api_p2_json_marks_unavailable():
+def test_api_p2_json_reports_live_contract():
     runner = CliRunner()
 
     result = runner.invoke(cli, ["--json", "api", "p2"])
 
     assert result.exit_code == 0
-    assert '"available": false' in result.output
-    assert '"status": "coming-soon"' in result.output
-    assert '"planned_class_name": "PaperangP2"' in result.output
+    assert '"available": true' in result.output
+    assert '"status": "available"' in result.output
+    assert '"class_name": "PaperangP2"' in result.output
+    assert '"transport": "usb | ble"' in result.output
 
 
-def test_api_p2_human_output_marks_unavailable():
+def test_api_p2_human_output_reports_live_contract():
     runner = CliRunner()
 
     result = runner.invoke(cli, ["api", "p2"])
 
     assert result.exit_code == 0
     assert "API: PaperangP2" in result.output
-    assert "Status: coming-soon" in result.output
-    assert "Import: unavailable in this package version" in result.output
+    assert "Status: available" in result.output
+    assert "Import: from paperang_cli import PaperangP2" in result.output
+    assert "Transport: usb | ble" in result.output

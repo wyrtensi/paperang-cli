@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.8 - 2026-06-01
+
+### Added
+
+- Paperang P2 software support over USB and BLE through `paperang-p2-lib`.
+- Public `PaperangP2` Python facade, P2 API contract output, model-aware driver registration, and P2 hardware smoke-check documentation.
+
+### Changed
+
+- Configuration now accepts model-specific transport selection and defaults P2 rendering to a `576`-pixel print width.
+- Probe output now reports model-specific local transport support.
+
+### Fixed
+
+- `PaperangP2()` now uses the P2 render width when no config file is supplied.
+- Default P2 BLE connection scans now prefer the `Paperang` name prefix so `Paperang_P2S` devices can be found without an explicit MAC address.
+
 ## 0.1.7 - 2026-06-01
 
 ### Added
