@@ -62,7 +62,7 @@ def _load_text_font(font_size, font_family="sans"):
         except OSError:
             continue
 
-    return ImageFont.load_default()
+    return ImageFont.load_default(size=font_size)
 
 
 def _text_bbox(draw, text, font):

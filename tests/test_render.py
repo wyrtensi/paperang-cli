@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from paperang_cli.protocol import image_data
 from paperang_cli.render import (
@@ -162,6 +162,28 @@ def test_wrap_text_keeps_long_words_when_disabled(monkeypatch):
     wrapped = image_data._wrap_text(object(), "ABCDE", object(), 25, break_long_words=False)
 
     assert wrapped == ["ABCDE"]
+
+
+def test_load_text_font_fallback_preserves_requested_size(monkeypatch):
+    monkeypatch.setattr(
+        image_data,
+        "FONT_CANDIDATES",
+        {
+            "sans": {"windows": [], "portable": ["missing-sans-font.ttf"]},
+            "mono": {"windows": [], "portable": ["missing-mono-font.ttf"]},
+            "serif": {"windows": [], "portable": ["missing-serif-font.ttf"]},
+        },
+    )
+
+    small_font = image_data._load_text_font(8)
+    large_font = image_data._load_text_font(24)
+    draw = ImageDraw.Draw(Image.new("L", (1, 1), 255))
+
+    assert image_data._text_size(draw, "SUPERCALIFRAGILISTICEXPIALIDOCIOUS", small_font)[0] < image_data._text_size(
+        draw,
+        "SUPERCALIFRAGILISTICEXPIALIDOCIOUS",
+        large_font,
+    )[0]
 
 
 def test_render_text_job_shrinks_to_fit_max_length(monkeypatch):

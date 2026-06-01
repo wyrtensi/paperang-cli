@@ -16,6 +16,7 @@
 
 - `PaperangP2()` now uses the P2 render width when no config file is supplied.
 - Default P2 BLE connection scans now prefer the `Paperang` name prefix so `Paperang_P2S` devices can be found without an explicit MAC address.
+- Font fallback rendering now preserves the requested size on hosts without the preferred TTF files, allowing `largest-fitting` to shrink long words consistently on macOS.
 
 ## 0.1.7 - 2026-06-01
 
