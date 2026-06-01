@@ -131,6 +131,14 @@
     "successful_matching_dry_run_required_before_real_print": true,
     "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, style-json payload, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
     "report_dry_run_before_real_print": true,
+    "ordinary_one_off_print_fast_path": "Run the matching print ... --dry-run, then the matching real print. The real print command performs its own discovery, connection, and required transport initialization.",
+    "separate_live_readiness_commands_required_before_each_real_print": false,
+    "live_ble_readiness_commands_must_run_sequentially": true,
+    "live_readiness_command_use_cases": [
+      "first contact with an unknown device",
+      "explicit diagnostics",
+      "recovery after a failed real print"
+    ],
     "imperative_request_authorizes_one_matching_non_self_test_real_print": true,
     "follow_up_real_print_approval_required_when_initial_request_is_exploratory_or_ambiguous": true,
     "new_approval_required_for": [
@@ -1153,7 +1161,15 @@
       "paperang --json config show",
       "paperang --json discover",
       "paperang --json probe",
-      "paperang --json battery"
+      "paperang --json battery",
+      "run live BLE readiness commands sequentially, never in parallel"
+    ],
+    "ordinary_one_off_print": [
+      "run the matching paperang --json print ... --dry-run",
+      "report the dry-run result",
+      "when the request already authorized one print, run the matching real print with the correct allow flag",
+      "let the real print command perform its own discovery, connection, and required transport initialization",
+      "if the real print fails, stop and report the error before using diagnostic commands or retrying"
     ],
     "text": [
       "choose the nearest scenario or example as a base when it fits; otherwise build a temporary style-json payload from existing public controls",

@@ -30,7 +30,8 @@ Both `paperang` and `paperang-cli` are valid console commands.
 Prefer `paperang` unless the host already has a conflicting executable with that name.
 
 - Prefer `--json` for machine-readable output.
-- Prefer `battery`, `mac`, `probe`, `status`, and `discover` before any printing command.
+- For an ordinary one-off print request, run the matching `print ... --dry-run` and then the matching real print. The real print command performs its own required transport initialization.
+- Use `battery`, `mac`, `probe`, `status`, and `discover` for first contact with an unknown device, explicit diagnostics, or recovery after a failed real print. Do not run live BLE readiness commands in parallel.
 - Require a successful matching `print ... --dry-run` before a real print. Keep the same content, image, layout, conversion mode, font size, and feed options.
 - Treat an imperative request such as "print this" as approval for one matching non-self-test real print after a successful dry-run. Do not ask the same question again.
 - Ask for explicit approval before copies, retries, repeated prints, changed parameters, or any `print self-test`.

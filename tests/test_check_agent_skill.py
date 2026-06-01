@@ -61,3 +61,9 @@ def test_skill_and_contract_dry_run_guidance_covers_font_fit():
     checker = load_checker()
 
     checker.validate_font_fit_guidance()
+
+
+def test_skill_and_contract_document_fast_one_off_print_path():
+    checker = load_checker()
+
+    checker.validate_fast_print_path_guidance()

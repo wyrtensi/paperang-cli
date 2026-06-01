@@ -160,6 +160,10 @@ Agents must:
 5. ask for explicit approval when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints
 6. add the correct allow flag only after approval from the current request or a follow-up
 
+For an ordinary one-off print request, the expected fast path is the matching `--dry-run` followed by the matching real print. The real print command performs its own discovery, connection, and required transport initialization. Separate live readiness commands are not required before every print.
+
+Use `config show`, `discover`, `probe`, `status`, `battery`, and `mac` for first contact with an unknown device, explicit diagnostics, or recovery after a failed real print. Run live BLE readiness commands sequentially, never in parallel.
+
 `print self-test` always requires specific follow-up approval after its dry-run because it consumes substantially more paper.
 
 A missing allow flag is a hard stop. If the CLI returns `SAFETY_ERROR`, do not automatically retry with an allow flag.
@@ -208,9 +212,19 @@ For rotated `rotate-90-cw` and `rotate-90-ccw` text and image jobs, those length
 
 ## Recommended Agent Workflows
 
+### Ordinary one-off print
+
+For a known printer and an ordinary one-off print request:
+
+1. Run the matching `paperang --json print ... --dry-run`.
+2. Report the dry-run result.
+3. If the request already authorized one print, run the matching real print with the correct allow flag.
+4. Let the real print command perform its own discovery, connection, and required transport initialization.
+5. If the real print fails, stop and report the error before using diagnostic commands or retrying.
+
 ### Readiness
 
-For first contact with an unknown device:
+For first contact with an unknown device, explicit diagnostics, or recovery after a failed real print, run live BLE readiness commands sequentially:
 
 1. `paperang --json config show`
 2. `paperang --json discover`, or use an explicit `--address` supplied by the user

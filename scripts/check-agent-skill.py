@@ -86,6 +86,11 @@ REQUIRED_FONT_FIT_GUIDANCE = (
     "font-fit",
     "font-fit mode",
 )
+REQUIRED_FAST_PATH_GUIDANCE = (
+    "For an ordinary one-off print request, use the fast path",
+    "The real print command performs its own required transport initialization.",
+    "Do not run live BLE readiness commands in parallel.",
+)
 
 
 def validate_required_files() -> None:
@@ -221,6 +226,19 @@ def validate_font_fit_guidance() -> None:
     )
 
 
+def validate_fast_print_path_guidance() -> None:
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    contract_markdown = (SKILL_ROOT / "references" / "cli-contract.md").read_text(encoding="utf-8")
+    contract_json = json.loads((SKILL_ROOT / "references" / "cli-contract.json").read_text(encoding="utf-8"))
+
+    for required_text in REQUIRED_FAST_PATH_GUIDANCE:
+        assert required_text in skill_text, f"Missing fast print path guidance: {required_text}"
+
+    assert "Separate live readiness commands are not required before every print." in contract_markdown
+    assert contract_json["safety_policy"]["separate_live_readiness_commands_required_before_each_real_print"] is False
+    assert contract_json["safety_policy"]["live_ble_readiness_commands_must_run_sequentially"] is True
+
+
 def main() -> int:
     validate_required_files()
     validate_frontmatter()
@@ -233,6 +251,7 @@ def main() -> int:
     validate_general_home_scenario_examples()
     validate_scenario_choice_flexibility()
     validate_font_fit_guidance()
+    validate_fast_print_path_guidance()
     print("paperang-cli Agent Skill is valid; references and public mirror are synchronized.")
     return 0
 

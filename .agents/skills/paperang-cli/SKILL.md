@@ -24,14 +24,15 @@ If working inside the `wyrtensi/paperang-cli` repository, the canonical editable
 Treat these rules as hard requirements:
 
 1. Prefer `--json` for agent-driven commands.
-2. Use non-printing commands first: `config show`, `discover`, `probe`, `status`, `battery`, and `mac`.
-3. Run a successful matching `print ... --dry-run` before every real print.
-4. Keep content, image, layout, mode, conversion, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options unchanged between dry-run and real print.
-5. Treat an imperative user request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run. Report the dry-run result, but do not ask the same question again.
-6. Ask for explicit approval before consuming paper when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints.
-7. Add `--allow-paper-use` only after approval from the current request or a follow-up for `print text`, `print paragraph`, `print image`, or `print compose`.
-8. Add `--allow-large-paper-use` only after specific follow-up approval for `print self-test`.
-9. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
+2. For an ordinary one-off print request, use the fast path: run the matching `print ... --dry-run`, then run the matching real print. The real print command performs its own required transport initialization.
+3. Use `config show`, `discover`, `probe`, `status`, `battery`, and `mac` for first contact with an unknown device, explicit diagnostics, or recovery after a failed real print. Do not run live BLE readiness commands in parallel.
+4. Run a successful matching `print ... --dry-run` before every real print.
+5. Keep content, image, layout, mode, conversion, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options unchanged between dry-run and real print.
+6. Treat an imperative user request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run. Report the dry-run result, but do not ask the same question again.
+7. Ask for explicit approval before consuming paper when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints.
+8. Add `--allow-paper-use` only after approval from the current request or a follow-up for `print text`, `print paragraph`, `print image`, or `print compose`.
+9. Add `--allow-large-paper-use` only after specific follow-up approval for `print self-test`.
+10. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
 
 `print image` and `print compose` are experimental physical-output paths. A successful dry-run validates rendering and packaging, not printer readiness or final paper quality.
 
@@ -53,7 +54,20 @@ The current release supports `paperang_p1` over BLE and `paperang_p2` over USB o
 - Do not assume other undocumented models are available because extension points exist.
 - Ask for manual physical validation before repeated image or compose printing.
 
-## Safe Readiness Sequence
+## Fast Print Path
+
+For an ordinary one-off print request, avoid separate live readiness queries. The real print command performs discovery, connection, and required transport initialization itself:
+
+```powershell
+paperang --json print text "Hello from Paperang" --dry-run
+paperang --json print text "Hello from Paperang" --allow-paper-use
+```
+
+Keep the dry-run and real print parameters identical. If the real print fails, stop and report the error before using diagnostic commands or retrying.
+
+## Diagnostic Readiness Sequence
+
+Use this sequence for first contact with an unknown device, explicit diagnostics, or recovery after a failed real print. Run live BLE readiness commands sequentially, never in parallel:
 
 ```powershell
 paperang --json config show
@@ -62,7 +76,7 @@ paperang --json probe
 paperang --json battery
 ```
 
-Stop and report failures before printing.
+Stop and report failures before printing or retrying.
 
 For an ordinary text print:
 
