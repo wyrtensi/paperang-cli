@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.9] - 2026-06-03
 
 ### Added
 - `paperang --json capabilities` command for runtime platform capability detection

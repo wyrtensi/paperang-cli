@@ -25,50 +25,94 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Collect cross-platform status
+      - name: Build HTML site
         shell: python
         run: |
           from pathlib import Path
           import json
+          import html
 
-          docs_dir = Path("docs")
+          out = Path("_site")
+          out.mkdir(exist_ok=True)
+
           status = {
               "platforms": {
                   "windows": {"ci": True, "hardware_tested": True, "last_validation": "2026-06-01"},
                   "macos": {"ci": True, "hardware_tested": False, "last_validation": None},
                   "linux": {"ci": True, "hardware_tested": False, "last_validation": None},
               },
-              "printers": {
-                  "paperang_p1": {"ble": {"windows": "tested", "macos": "untested", "linux": "untested"}},
-                  "paperang_p2": {
-                      "usb": {"windows": "tested", "macos": "untested", "linux": "untested"},
-                      "ble": {"windows": "requires_p2lib_0.4+", "macos": "untested", "linux": "untested"},
-                  },
-              },
               "version": "0.1.9",
-              "generated_by": "deploy-docs workflow",
           }
 
-          index_md = docs_dir / "index.md"
-          if index_md.exists():
-              content = index_md.read_text(encoding="utf-8")
-              content += "\n\n## Platform Status (auto-generated)\n\n"
-              content += "| OS | CI | Hardware Tested | Last Validation |\n"
-              content += "|---|---|---|---|\n"
-              for os_name, info in status["platforms"].items():
-                  hw = "Yes" if info["hardware_tested"] else "No"
-                  lv = info["last_validation"] or "—"
-                  content += f"| {os_name.title()} | Yes | {hw} | {lv} |\n"
-              index_md.write_text(content, encoding="utf-8")
-          else:
-              docs_dir.mkdir(exist_ok=True)
-              index_md.write_text(
-                  "# paperang-cli Cross-Platform Documentation\n\n"
-                  "See [PLATFORMS.md](PLATFORMS.md) for the full support matrix.\n",
-                  encoding="utf-8",
-              )
+          platforms_md = ""
+          for os_name, info in status["platforms"].items():
+              hw = "Yes" if info["hardware_tested"] else "No"
+              lv = info["last_validation"] or "—"
+              platforms_md += f"| {os_name.title()} | Yes | {hw} | {lv} |\n"
 
-          (docs_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+          index = f"""<!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>paperang-cli — Cross-Platform Status</title>
+            <style>
+              body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }}
+              table {{ border-collapse: collapse; width: 100%; margin: 1rem 0; }}
+              th, td {{ border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }}
+              th {{ background: #f6f8fa; }}
+              code {{ background: #f6f8fa; padding: 2px 6px; border-radius: 4px; }}
+              .badge {{ display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 600; }}
+              .tested {{ background: #dafbe1; color: #116329; }}
+              .untested {{ background: #fff8c5; color: #735c0f; }}
+            </style>
+          </head>
+          <body>
+            <h1>paperang-cli</h1>
+            <p>Standalone CLI for Paperang thermal printers (P1 BLE, P2 USB/BLE).</p>
+
+            <h2>Platform Support</h2>
+            <table>
+              <tr><th>Printer</th><th>Transport</th><th>Windows</th><th>macOS</th><th>Linux</th></tr>
+              <tr><td>Paperang P1</td><td>BLE</td><td><span class="badge tested">Tested</span></td><td><span class="badge untested">Untested</span></td><td><span class="badge untested">Untested</span></td></tr>
+              <tr><td>Paperang P2</td><td>USB</td><td><span class="badge tested">Tested</span></td><td><span class="badge untested">Untested</span></td><td><span class="badge untested">Untested</span></td></tr>
+              <tr><td>Paperang P2</td><td>BLE</td><td><span class="badge untested">Requires 0.4.0rc3+</span></td><td><span class="badge untested">Untested</span></td><td><span class="badge untested">Untested</span></td></tr>
+            </table>
+
+            <h2>CI Validation</h2>
+            <table>
+              <tr><th>OS</th><th>CI runs</th><th>Hardware tested</th><th>Last validation</th></tr>
+              {platforms_md}
+            </table>
+
+            <h2>Quick Install</h2>
+            <h3>PyPI</h3>
+            <pre><code>pip install paperang-cli</code></pre>
+            <h3>npm</h3>
+            <pre><code>npm install -g paperang-cli</code></pre>
+
+            <h2>Verify Installation</h2>
+            <pre><code>python scripts/check-cross-platform.py</code></pre>
+
+            <h2>Capability Detection</h2>
+            <pre><code>paperang --json capabilities</code></pre>
+
+            <h2>Links</h2>
+            <ul>
+              <li><a href="https://github.com/wyrtensi/paperang-cli">GitHub</a></li>
+              <li><a href="https://pypi.org/project/paperang-cli/">PyPI</a></li>
+              <li><a href="https://www.npmjs.com/package/paperang-cli">npm</a></li>
+              <li><a href="https://github.com/wyrtensi/paperang-cli/blob/main/docs/PLATFORMS.md">Platform Support Matrix</a></li>
+            </ul>
+
+            <hr>
+            <p><small>Version {status["version"]} — Real BLE printing tested only on Windows.</small></p>
+          </body>
+          </html>"""
+
+          (out / "index.html").write_text(index, encoding="utf-8")
+          (out / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+          print(f"Built site at {out.resolve()}")
 
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -76,7 +120,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
-          path: docs
+          path: _site
 
   deploy:
     name: Deploy to GitHub Pages
