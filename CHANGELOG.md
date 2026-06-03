@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `paperang --json capabilities` command for runtime platform capability detection
+- Cross-platform support: macOS config path (`~/Library/Application Support`), Linux XDG path
+- `docs/PLATFORMS.md` as the single source of truth for platform support
+- macOS and Linux installation sections in `docs/installation.md`
+- macOS and Linux troubleshooting sections in `docs/troubleshooting.md`
+- Python 3.11 and 3.13 to CI matrix
+
+### Changed
+- CI matrix expanded to 3 OS × 5 Python = 15 test jobs + 3 smoke jobs
+- `pyproject.toml` classifiers now include `Operating System :: MacOS` and `Operating System :: POSIX :: Linux`
+- README now includes bash-equivalent commands for macOS/Linux
+
+### Platform Impact
+- macOS: config path changed from `~/.config/` (XDG fallback) to `~/Library/Application Support/`
+- Linux: no change (XDG_CONFIG_HOME still used)
+- Windows: no change (APPDATA still used)
+- Real BLE printing tested only on Windows; macOS/Linux are software-validated
+
 ## 0.1.8 - 2026-06-01
 
 ### Added

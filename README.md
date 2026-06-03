@@ -52,12 +52,25 @@ Install the published package from PyPI:
 python -m pip install paperang-cli
 ```
 
+```bash
+# macOS / Linux
+pip install paperang-cli
+```
+
 For local development, clone the repository and install it in editable mode:
 
 ```powershell
 git clone https://github.com/wyrtensi/paperang-cli.git
 Set-Location "paperang-cli"
 python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+```bash
+# macOS / Linux
+git clone https://github.com/wyrtensi/paperang-cli.git
+cd paperang-cli
+pip install -e ".[dev]"
 python -m pytest
 ```
 
@@ -74,11 +87,28 @@ An npm wrapper is also maintained under `npm/`. Install it globally with:
 npm install --global paperang-cli
 ```
 
+```bash
+# macOS / Linux
+npm install --global paperang-cli
+```
+
 The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
 
 The published dependency set includes the upstream `paperang-p2-lib` runtime so P2 USB and BLE support install with the main package.
 
 The npm wrapper uses a `postinstall` lifecycle script to run `pip install` for the matching Python package version. See the [security policy](SECURITY.md#npm-postinstall-behavior) for details and an `--ignore-scripts` audit path.
+
+## Cross-Platform Compatibility
+
+| Printer | Transport | Windows | macOS | Linux |
+| --- | --- | --- | --- | --- |
+| Paperang P1 | BLE | ✅ Tested (Python 3.14) | ⚠️ Untested (software only) | ⚠️ Untested (software only) |
+| Paperang P2 | USB | ✅ Software (libusb/WinUSB) | ⚠️ Untested | ⚠️ Untested |
+| Paperang P2 | BLE | ⚠️ Requires paperang-p2-lib 0.4.0rc3+ | ⚠️ Untested | ⚠️ Untested |
+
+> **Honest validation:** CI runs on all 3 OS, but real BLE printing has been tested only on Windows.
+> macOS and Linux support is software-only and requires manual user validation.
+> See [PLATFORMS.md](docs/PLATFORMS.md) for the full support matrix.
 
 ## Agent Skill
 
@@ -144,15 +174,33 @@ paperang --json probe
 paperang --json battery
 ```
 
+```bash
+# macOS / Linux
+paperang --json config show
+paperang --json discover
+paperang --json probe
+paperang --json battery
+```
+
 Before a real print, run the matching command with `--dry-run`:
 
 ```powershell
 paperang --json print text "Hello from Paperang" --dry-run
 ```
 
+```bash
+# macOS / Linux
+paperang --json print text "Hello from Paperang" --dry-run
+```
+
 After checking the result, explicitly allow paper use:
 
 ```powershell
+paperang --json print text "Hello from Paperang" --allow-paper-use
+```
+
+```bash
+# macOS / Linux
 paperang --json print text "Hello from Paperang" --allow-paper-use
 ```
 
@@ -421,9 +469,19 @@ Inspect the active config:
 paperang --json config show
 ```
 
+```bash
+# macOS / Linux
+paperang --json config show
+```
+
 Create an example config:
 
 ```powershell
+paperang config init
+```
+
+```bash
+# macOS / Linux
 paperang config init
 ```
 
@@ -437,7 +495,8 @@ Configuration is resolved in this order:
 Default paths:
 
 - Windows: `%APPDATA%\paperang-cli\paperang-cli.config.json`
-- Linux and macOS: `$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json`, or `~/.config/paperang-cli/paperang-cli.config.json`
+- macOS: `~/Library/Application Support/paperang-cli/paperang-cli.config.json`
+- Linux: `$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json`, or `~/.config/paperang-cli/paperang-cli.config.json`
 
 See [Configuration](docs/usage/configuration.md) for the full schema.
 
@@ -453,6 +512,16 @@ See [Configuration](docs/usage/configuration.md) for the full schema.
 - [Portable Agent Skill](skills/paperang-cli/SKILL.md)
 - [Publishing runbook for agents](docs/agents/publishing.md)
 - [Security policy](SECURITY.md)
+
+### Cross-Platform Status
+
+Live platform validation status is available at **https://wyrtensi.github.io/paperang-cli/**.
+
+To verify your local installation:
+
+```bash
+python scripts/check-cross-platform.py
+```
 
 ## Project History And Acknowledgements
 

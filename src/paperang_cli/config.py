@@ -360,6 +360,8 @@ def project_root() -> Path:
 def default_config_path() -> Path:
     if sys.platform == "win32":
         config_home = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    elif sys.platform == "darwin":
+        config_home = Path.home() / "Library" / "Application Support"
     else:
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 

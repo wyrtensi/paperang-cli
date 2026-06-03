@@ -4,8 +4,6 @@
 
 `paperang-cli` is currently intended to run on Python `3.10+`.
 
-The existing repository has already been exercised on Windows with Python `3.14.2`, so that is the current practical reference environment.
-
 Real BLE communication and physical printing have been tested only on Windows. Linux and macOS CI checks validate package compatibility and unit tests, not live printer behavior.
 
 ## Core Dependencies
@@ -16,7 +14,9 @@ The standalone package depends on:
 - `click` for the CLI surface
 - `numpy`, `Pillow`, `scikit-image`, `scipy`, `numba`, and `pilkit` for rendering
 
-## Install From PyPI
+## Windows
+
+### Install From PyPI
 
 ```powershell
 python -m pip install paperang-cli
@@ -28,7 +28,7 @@ That gives you:
 - `paperang`
 - `paperang-cli`
 
-## Local Editable Install
+### Local Editable Install
 
 From a cloned repository:
 
@@ -38,7 +38,7 @@ python -m pip install -e ".[dev]"
 
 This also installs `pytest`.
 
-## No-Install Development Mode
+### No-Install Development Mode
 
 If you want to validate the package structure before installing, use the `src` directory on `PYTHONPATH`.
 
@@ -48,18 +48,121 @@ $env:PYTHONPATH = "src"
 python -m paperang_cli --help
 ```
 
-## Windows Notes
+### Windows Notes
 
 - Keep Bluetooth enabled.
 - Ensure the printer is powered on before `status` or `discover`.
 - If Windows has Bluetooth pairing problems, the root repository docs may still be useful because the BLE stack is the same family of behavior.
 - `paperang-cli` does not automate pairing in the current release.
 
+## macOS
+
+### Install From PyPI
+
+```bash
+pip install paperang-cli
+```
+
+### Local Editable Install
+
+```bash
+pip install --pre -e ".[dev]"
+```
+
+### System Dependencies
+
+For P2 USB support, install `libusb` via Homebrew:
+
+```bash
+brew install libusb
+```
+
+### Bluetooth (BLE)
+
+macOS uses CoreBluetooth. The first time you run a BLE command, macOS may prompt for Bluetooth permission.
+
+### Config Location
+
+```
+~/Library/Application Support/paperang-cli/paperang-cli.config.json
+```
+
+### macOS Troubleshooting
+
+- **Bluetooth permission not granted:** Open System Settings → Privacy & Security → Bluetooth, then allow Terminal or your terminal emulator.
+- **libusb not found:** Run `brew install libusb`.
+- **CoreBluetooth scan returns empty:** Verify Bluetooth is enabled in System Settings → Bluetooth.
+
+## Linux
+
+### Install From PyPI
+
+```bash
+pip install paperang-cli
+```
+
+### Local Editable Install
+
+```bash
+pip install --pre -e ".[dev]"
+```
+
+### System Dependencies
+
+Debian/Ubuntu:
+
+```bash
+sudo apt-get install libusb-1.0-0-dev bluez
+```
+
+Fedora:
+
+```bash
+sudo dnf install libusb1-devel bluez
+```
+
+### Bluetooth (BLE)
+
+BLE requires `bluez` running and your user in the `bluetooth` group:
+
+```bash
+sudo usermod -aG bluetooth $USER
+```
+
+Log out and back in for the group change to take effect.
+
+### USB (P2)
+
+Non-root USB access may require udev rules. See the Linux troubleshooting section below.
+
+### Config Location
+
+```
+$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json
+```
+
+or by default:
+
+```
+~/.config/paperang-cli/paperang-cli.config.json
+```
+
+### Linux Troubleshooting
+
+- **bluez not running:** Check with `systemctl status bluetooth` and start with `sudo systemctl start bluetooth`.
+- **User not in 'bluetooth' group:** Run `sudo usermod -aG bluetooth $USER` then log out and back in.
+- **udev rules missing:** Create `/etc/udev/rules.d/99-paperang.rules` with:
+  ```
+  SUBSYSTEM=="usb", ATTR{idVendor}=="xxxx", MODE="0666"
+  ```
+  Replace `xxxx` with the printer's USB vendor ID. Then reload rules with `sudo udevadm control --reload-rules && sudo udevadm trigger`.
+- **Permission denied on USB:** Either set udev rules (above) or temporarily run `sudo chmod 666 /dev/bus/usb/...`.
+
 ## First Safe Commands
 
 After installation, start with non-printing commands:
 
-```powershell
+```bash
 paperang discover
 paperang status
 paperang --json status
@@ -67,10 +170,10 @@ paperang --json status
 
 Then validate rendering without touching paper:
 
-```powershell
+```bash
 paperang print text "test print" --dry-run
 paperang --json print paragraph "A longer message for wrapped rendering." --dry-run
-paperang --json print image .\sample.png --dry-run
+paperang --json print image ./sample.png --dry-run
 paperang --json print self-test --dry-run
 ```
 

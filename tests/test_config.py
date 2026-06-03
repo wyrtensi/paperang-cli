@@ -34,6 +34,19 @@ def test_default_config_path_uses_xdg_config_home_when_available(monkeypatch, tm
     assert config_module.default_config_path() == tmp_path / "paperang-cli" / "paperang-cli.config.json"
 
 
+def test_default_config_path_uses_library_on_darwin(monkeypatch, tmp_path):
+    monkeypatch.setattr(config_module.sys, "platform", "darwin")
+    monkeypatch.setattr(config_module.Path, "home", lambda: tmp_path)
+    assert config_module.default_config_path() == tmp_path / "Library" / "Application Support" / "paperang-cli" / "paperang-cli.config.json"
+
+
+def test_default_config_path_uses_xdg_fallback_on_linux(monkeypatch, tmp_path):
+    monkeypatch.setattr(config_module.sys, "platform", "linux")
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(config_module.Path, "home", lambda: tmp_path)
+    assert config_module.default_config_path() == tmp_path / ".config" / "paperang-cli" / "paperang-cli.config.json"
+
+
 def test_load_config_explicit_missing_path_raises(tmp_path):
     with pytest.raises(ConfigError):
         config_module.load_config(tmp_path / "missing.json")

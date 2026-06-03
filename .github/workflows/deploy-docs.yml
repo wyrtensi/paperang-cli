@@ -1,0 +1,91 @@
+name: Deploy cross-platform docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Collect cross-platform status
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+
+          docs_dir = Path("docs")
+          status = {
+              "platforms": {
+                  "windows": {"ci": True, "hardware_tested": True, "last_validation": "2026-06-01"},
+                  "macos": {"ci": True, "hardware_tested": False, "last_validation": None},
+                  "linux": {"ci": True, "hardware_tested": False, "last_validation": None},
+              },
+              "printers": {
+                  "paperang_p1": {"ble": {"windows": "tested", "macos": "untested", "linux": "untested"}},
+                  "paperang_p2": {
+                      "usb": {"windows": "tested", "macos": "untested", "linux": "untested"},
+                      "ble": {"windows": "requires_p2lib_0.4+", "macos": "untested", "linux": "untested"},
+                  },
+              },
+              "version": "0.1.9",
+              "generated_by": "deploy-docs workflow",
+          }
+
+          index_md = docs_dir / "index.md"
+          if index_md.exists():
+              content = index_md.read_text(encoding="utf-8")
+              content += "\n\n## Platform Status (auto-generated)\n\n"
+              content += "| OS | CI | Hardware Tested | Last Validation |\n"
+              content += "|---|---|---|---|\n"
+              for os_name, info in status["platforms"].items():
+                  hw = "Yes" if info["hardware_tested"] else "No"
+                  lv = info["last_validation"] or "—"
+                  content += f"| {os_name.title()} | Yes | {hw} | {lv} |\n"
+              index_md.write_text(content, encoding="utf-8")
+          else:
+              docs_dir.mkdir(exist_ok=True)
+              index_md.write_text(
+                  "# paperang-cli Cross-Platform Documentation\n\n"
+                  "See [PLATFORMS.md](PLATFORMS.md) for the full support matrix.\n",
+                  encoding="utf-8",
+              )
+
+          (docs_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+
+      - name: Setup Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: docs
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

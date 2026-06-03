@@ -10,6 +10,7 @@ import click
 
 from paperang_cli import __version__
 from paperang_cli.commands.api_cmd import api_group
+from paperang_cli.commands.capabilities_cmd import capabilities_command
 from paperang_cli.commands.battery import battery_command
 from paperang_cli.commands.config_cmd import config_group
 from paperang_cli.commands.discover import discover_command
@@ -78,6 +79,7 @@ cli.add_command(discover_command)
 cli.add_command(api_group)
 cli.add_command(print_group)
 cli.add_command(config_group)
+cli.add_command(capabilities_command)
 
 
 def main() -> None:
