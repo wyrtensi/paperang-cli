@@ -11,9 +11,12 @@ from platform import system
 from bleak import BleakClient, BleakScanner
 from paperang_cli.protocol.const import BtCommandByte
 
-try:
-    from bleak.backends.winrt.util import uninitialize_sta
-except ImportError:
+if sys.platform == "win32":
+    try:
+        from bleak.backends.winrt.util import uninitialize_sta
+    except Exception:
+        uninitialize_sta = None
+else:
     uninitialize_sta = None
 
 # Paperang Service and Characteristic UUIDs
