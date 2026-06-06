@@ -51,6 +51,16 @@ def test_usb_p2_missing_pyusb():
     assert cap.available is False
 
 
+def test_usb_p2_missing_libusb_backend():
+    with patch("paperang_cli.protocol._capabilities.importlib.util.find_spec", return_value=True), \
+         patch("paperang_cli.protocol._capabilities.sys") as mock_sys, \
+         patch("usb.backend.libusb1.get_backend", return_value=None):
+        mock_sys.platform = "win32"
+        cap = caps.usb_p2_available()
+    assert cap.available is False
+    assert "backend" in cap.detail.lower()
+
+
 def test_bleak_backends_windows():
     with patch("paperang_cli.protocol._capabilities.sys") as mock_sys:
         mock_sys.platform = "win32"

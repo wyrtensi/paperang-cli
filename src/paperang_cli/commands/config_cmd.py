@@ -37,6 +37,8 @@ def show_config_command(ctx: click.Context) -> None:
         [
             f"Config path: {config_path}",
             f"Config exists: {config_exists}",
+            f"Active printer: {settings.active_printer or '<single>'}",
+            f"Default printer: {settings.default_printer or '<single>'}",
             f"Model: {settings.model}",
             f"MAC address: {settings.macaddress or '<unset>'}",
             f"Printer width: {settings.printerwidth}",

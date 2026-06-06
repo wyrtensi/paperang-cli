@@ -22,6 +22,11 @@ Check:
 - battery level on the printer
 - that another app is not holding the printer connection
 
+For P2 over BLE, `probe` can now distinguish two profiles:
+
+- upstream Nordic UART BLE: status and battery use `paperang-p2-lib`
+- `ff00` BLE: the device is recognized and can be connected through the A5 packet family. If `probe` shows `protocol=a5`, the CLI can query diagnostics and use the supported RawBT-style raster path validated on Windows.
+
 ### Print Happens But Paper Exit Is Wrong
 
 Current P1 behavior uses calibrated feed command units derived from the known-good Android behavior.
@@ -45,6 +50,10 @@ Try these steps:
 3. if that is still not good enough, compare low-level overrides such as `--conversion edge`
 4. prefer simple black-and-white source images first when isolating sticker-style issues
 5. validate on real paper before assuming the mode is stable for production use
+
+### P2 BLE Print Is Very Slow Or Banded
+
+P2 FF00/A5 printing should stream raster rows continuously. If paper advances at roughly `0.5 mm/s` or output is heavily banded, upgrade to a build that sends P2 raster chunks without waiting for a status query after every tiny chunk. That stop-and-go pattern is not expected for normal P2 BLE printing.
 
 ### `print` Refuses To Run
 
@@ -91,6 +100,9 @@ If the short command name conflicts with another tool on the host, switch to `pa
 
 - Keep Bluetooth enabled in Windows settings.
 - Ensure the printer is powered on before `status` or `discover`.
+- If a previously reachable P2 disappears from `discover`, wake the printer with the hardware button and ensure another app is not holding the BLE connection.
+- For P2 BLE devices advertising as `Paperang_P2`, use `"model": "paperang_p2"` and `"transport": "ble"`; `probe` should show `connected: true` and may show `hardware_info` ending in `protocol=a5` when the device exposes only the `ff00` profile.
+- For P2 USB, run `paperang --json capabilities`. USB is experimental. If `p2.usb` is unavailable with a missing `libusb-1.0` backend message, Windows may still list the device, but PyUSB cannot open it until a libusb backend and compatible WinUSB/Zadig driver are available.
 - If Windows has Bluetooth pairing problems, the root repository docs may still be useful because the BLE stack is the same family of behavior.
 - `paperang-cli` does not automate pairing in the current release.
 

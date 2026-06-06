@@ -70,11 +70,35 @@ def paperang_p2_lib_version() -> Capability:
 def usb_p2_available() -> Capability:
     if importlib.util.find_spec("usb") is None:
         return Capability("p2.usb", False, "pyusb not installed", "package")
+    backend, backend_detail = _pyusb_libusb1_backend()
+    if backend is None:
+        return Capability("p2.usb", False, backend_detail, "system")
     if sys.platform.startswith("linux"):
-        return Capability("p2.usb", True, "May require udev rules (see docs/installation.md#linux)", "permission")
+        return Capability("p2.usb", True, "libusb backend loaded; may require udev rules (see docs/installation.md#linux)", "permission")
     if sys.platform == "darwin":
-        return Capability("p2.usb", True, "May require libusb via brew install libusb", "system")
-    return Capability("p2.usb", True, "libusb via WinUSB / Zadig driver", "system")
+        return Capability("p2.usb", True, "libusb backend loaded; may require user USB permission", "system")
+    return Capability("p2.usb", True, "libusb backend loaded; device may still require WinUSB/Zadig driver", "system")
+
+
+def _pyusb_libusb1_backend():
+    try:
+        if importlib.util.find_spec("libusb_package") is not None:
+            try:
+                libusb_package = importlib.import_module("libusb_package")
+                backend = libusb_package.get_libusb1_backend()
+                if backend is not None:
+                    return backend, "libusb backend loaded from libusb-package"
+            except Exception:
+                pass
+
+        libusb1 = importlib.import_module("usb.backend.libusb1")
+        backend = libusb1.get_backend()
+    except Exception as exc:
+        return None, f"PyUSB is installed but libusb backend check failed: {exc}"
+
+    if backend is None:
+        return None, "PyUSB is installed but no libusb-1.0 backend is available"
+    return backend, "libusb backend loaded"
 
 
 def report() -> list[dict]:

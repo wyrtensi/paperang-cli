@@ -38,7 +38,7 @@ Prefer `paperang` unless the host already has a conflicting executable with that
 - Real `print text`, `print paragraph`, `print image`, and `print compose` commands require `--allow-paper-use`.
 - `print self-test` requires `--allow-large-paper-use` and should be treated as a high-paper-consumption action.
 - Supported models in the current release are `paperang_p1` and `paperang_p2`.
-- `paperang_p1` uses BLE only. `paperang_p2` supports USB and BLE in software, but P2 hardware validation is still pending in this repository.
+- `paperang_p1` uses BLE only. `paperang_p2` is supported through BLE on the validated FF00/A5 path; USB remains an experimental software path.
 
 Image printing should currently be treated as experimental. Agents should assume that physical output quality may still need manual validation and user confirmation.
 
@@ -84,6 +84,6 @@ If a longer-lived Python process reuses the transport object after disconnect, t
 
 For `paperang_p1`, local/cable mode is not available in this project. Live communication currently uses Bluetooth only.
 
-For `paperang_p2`, live communication uses USB by default or BLE when configured. Treat both P2 live paths as not hardware-validated in this repository yet.
+For `paperang_p2`, use BLE for the supported validated path. USB is available only as an experimental software path.
 
 Real BLE communication and physical printing have been tested only on Windows. Linux and macOS CI runs are compatibility checks, not hardware-validation evidence.

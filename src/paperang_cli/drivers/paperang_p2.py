@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from paperang_cli.drivers.base import PrinterDriver
@@ -9,6 +10,8 @@ from paperang_cli.errors import DriverError, PrinterNotFoundError, SafetyError
 from paperang_cli.models import BatteryStatus, BluetoothMacStatus, PrintResult, PrinterDevice, PrinterStatus
 from paperang_cli.render import (
     DEFAULT_COMPOSE_FONT_SIZE,
+    DEFAULT_PARAGRAPH_FONT_SIZE,
+    DEFAULT_TEXT_FONT_SIZE,
     feed_units_from_mm,
     render_compose_job,
     render_image_job,
@@ -21,7 +24,21 @@ IMAGE_PRINT_WARNING = "Image printing is more experimental than text printing; c
 COMPOSE_PRINT_WARNING = "Combined text-and-image printing uses the same image conversion path as image printing; validate physical output on real hardware before relying on the layout."
 USB_DEVICE_ADDRESS = "usb://paperang_p2"
 USB_DEVICE_DETAILS = "USB VID=0x4348 PID=0x5584"
-LOCAL_TRANSPORT_NOTE = "Paperang P2 supports USB transport in this project. BLE is also available when transport='ble'."
+LOCAL_TRANSPORT_NOTE = (
+    "Paperang P2 is supported through BLE FF00/A5 when transport='ble'. "
+    "USB is available only as an experimental software path."
+)
+P2_RENDER_SCALE = 576 / 384
+P2_DEFAULT_TEXT_FONT_SIZE = round(DEFAULT_TEXT_FONT_SIZE * P2_RENDER_SCALE)
+P2_DEFAULT_PARAGRAPH_FONT_SIZE = round(DEFAULT_PARAGRAPH_FONT_SIZE * P2_RENDER_SCALE)
+P2_DEFAULT_COMPOSE_FONT_SIZE = round(DEFAULT_COMPOSE_FONT_SIZE * P2_RENDER_SCALE)
+P2_DEFAULT_TEXT_HORIZONTAL_PADDING_PX = round(16 * P2_RENDER_SCALE)
+P2_DEFAULT_TEXT_VERTICAL_PADDING_PX = round(12 * P2_RENDER_SCALE)
+P2_DEFAULT_PARAGRAPH_HORIZONTAL_PADDING_PX = round(12 * P2_RENDER_SCALE)
+P2_DEFAULT_PARAGRAPH_VERTICAL_PADDING_PX = round(10 * P2_RENDER_SCALE)
+P2_DEFAULT_COMPOSE_HORIZONTAL_PADDING_PX = round(12 * P2_RENDER_SCALE)
+P2_DEFAULT_COMPOSE_VERTICAL_PADDING_PX = round(10 * P2_RENDER_SCALE)
+P2_DEFAULT_COMPOSE_SPACER_HEIGHT_PX = round(12 * P2_RENDER_SCALE)
 
 
 def _resolved_bool_style(effective_style: dict[str, object], key: str, *, default: bool) -> bool:
@@ -62,7 +79,9 @@ class PaperangP2Driver(PrinterDriver):
         try:
             if not printer.connect():
                 return []
-        except Exception:
+        except Exception as exc:
+            if _is_usb_backend_error(exc):
+                raise DriverError(_p2_usb_backend_error_message()) from exc
             return []
         finally:
             try:
@@ -188,6 +207,7 @@ class PaperangP2Driver(PrinterDriver):
                 "overflow_policy": style_defaults.overflow_policy,
                 "break_long_words": style_defaults.break_long_words,
             }
+        _apply_p2_text_render_defaults(effective_style, paragraph=paragraph)
         rendered = render_text_job(
             text,
             printer_width=self.settings.printerwidth,
@@ -210,6 +230,7 @@ class PaperangP2Driver(PrinterDriver):
             ),
             advance_mm_per_px=self.settings.calibration.advance_mm_per_px,
             printable_width_mm=self.settings.calibration.printable_width_mm,
+            binary_text=True,
         )
         return self._send_bitmap_job(
             bitstream=rendered.bitstream,
@@ -308,7 +329,7 @@ class PaperangP2Driver(PrinterDriver):
         resolved_layout = str(effective_style.get("layout") or layout or compose_defaults.layout)
         resolved_font_size = effective_style.get("font_size")
         if resolved_font_size is None:
-            resolved_font_size = font_size if font_size is not None else (compose_defaults.font_size or DEFAULT_COMPOSE_FONT_SIZE)
+            resolved_font_size = font_size if font_size is not None else (compose_defaults.font_size or P2_DEFAULT_COMPOSE_FONT_SIZE)
         resolved_min_font_size = effective_style.get("min_font_size")
         if resolved_min_font_size is None:
             resolved_min_font_size = min_font_size if min_font_size is not None else compose_defaults.min_font_size
@@ -326,10 +347,25 @@ class PaperangP2Driver(PrinterDriver):
             min_font_size=resolved_min_font_size,
             font_fit=resolved_font_fit,
             font_family=str(effective_style.get("font_family") or compose_defaults.font_family),
-            horizontal_padding_px=effective_style.get("horizontal_padding_px", compose_defaults.horizontal_padding_px),
-            vertical_padding_px=effective_style.get("vertical_padding_px", compose_defaults.vertical_padding_px),
+            horizontal_padding_px=_style_value_with_default(
+                effective_style,
+                "horizontal_padding_px",
+                compose_defaults.horizontal_padding_px,
+                P2_DEFAULT_COMPOSE_HORIZONTAL_PADDING_PX,
+            ),
+            vertical_padding_px=_style_value_with_default(
+                effective_style,
+                "vertical_padding_px",
+                compose_defaults.vertical_padding_px,
+                P2_DEFAULT_COMPOSE_VERTICAL_PADDING_PX,
+            ),
             line_spacing_px=effective_style.get("line_spacing_px", compose_defaults.line_spacing_px),
-            spacer_height_px=effective_style.get("spacer_height_px", compose_defaults.spacer_height_px),
+            spacer_height_px=_style_value_with_default(
+                effective_style,
+                "spacer_height_px",
+                compose_defaults.spacer_height_px,
+                P2_DEFAULT_COMPOSE_SPACER_HEIGHT_PX,
+            ),
             conversion=resolved_conversion,
             layout=resolved_layout,
             max_length_mm=effective_style.get("max_length_mm", compose_defaults.max_length_mm),
@@ -395,8 +431,12 @@ class PaperangP2Driver(PrinterDriver):
     def _connect_printer(self, address: str | None):
         printer = self._build_printer(address)
         try:
+            if self._resolved_transport() == "ble":
+                _ensure_current_event_loop()
             connected = printer.connect()
         except Exception as exc:
+            if _is_usb_backend_error(exc):
+                raise DriverError(_p2_usb_backend_error_message()) from exc
             raise PrinterNotFoundError(
                 f"Unable to connect to a supported Paperang P2 printer over {self._resolved_transport()}"
             ) from exc
@@ -409,24 +449,44 @@ class PaperangP2Driver(PrinterDriver):
         return printer
 
     def _build_printer(self, address: str | None):
+        if self._resolved_transport() == "ble":
+            return _AutoBleP2Printer(
+                self._build_nus_printer(address),
+                self._build_ff00_printer(address),
+            )
+
         try:
             from paperang.printer._printing import PaperangP2
-            from paperang.transport._ble import BleTransport
             from paperang.transport._usb import UsbTransport
         except ImportError as exc:
             raise DriverError(
                 "Paperang P2 support requires the upstream 'paperang-p2-lib' package to be installed"
             ) from exc
 
-        if self._resolved_transport() == "ble":
-            transport = BleTransport(
-                address=address or self.settings.macaddress or None,
-                name=self._ble_scan_name(),
-            )
-        else:
-            transport = UsbTransport()
+        return PaperangP2(transport=UsbTransport())
 
+    def _build_nus_printer(self, address: str | None):
+        try:
+            from paperang.printer._printing import PaperangP2
+            from paperang.transport._ble import BleTransport
+        except ImportError as exc:
+            raise DriverError(
+                "Paperang P2 support requires the upstream 'paperang-p2-lib' package to be installed"
+            ) from exc
+
+        transport = BleTransport(
+            address=address or self.settings.macaddress or None,
+            name=self._ble_scan_name(),
+        )
         return PaperangP2(transport=transport)
+
+    def _build_ff00_printer(self, address: str | None):
+        from paperang_cli.protocol.p2_ble_ff00 import PaperangP2Ff00
+
+        return PaperangP2Ff00(
+            address or self.settings.macaddress or None,
+            name=self._ff00_ble_scan_name(),
+        )
 
     def _ble_scan_name(self) -> str:
         if not self.settings.discovery_names:
@@ -434,6 +494,14 @@ class PaperangP2Driver(PrinterDriver):
         if "Paperang" in self.settings.discovery_names:
             return "Paperang"
         return self.settings.discovery_names[0]
+
+    def _ff00_ble_scan_name(self) -> str:
+        if not self.settings.discovery_names:
+            return "Paperang_P2"
+        for name in ("Paperang_P2", "Paperang_P2S"):
+            if name in self.settings.discovery_names:
+                return name
+        return self._ble_scan_name()
 
     def _resolved_transport(self) -> str:
         return self.settings.transport or "usb"
@@ -532,3 +600,86 @@ class PaperangP2Driver(PrinterDriver):
         if len(normalized) == 17 and all(char in "0123456789ABCDEF:" for char in normalized):
             return normalized
         return value
+
+
+def _is_usb_backend_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "NoBackendError" or "No backend available" in str(exc)
+
+
+def _apply_p2_text_render_defaults(effective_style: dict[str, object], *, paragraph: bool) -> None:
+    if effective_style.get("font_size") is None:
+        effective_style["font_size"] = P2_DEFAULT_PARAGRAPH_FONT_SIZE if paragraph else P2_DEFAULT_TEXT_FONT_SIZE
+    if effective_style.get("horizontal_padding_px") is None:
+        effective_style["horizontal_padding_px"] = (
+            P2_DEFAULT_PARAGRAPH_HORIZONTAL_PADDING_PX if paragraph else P2_DEFAULT_TEXT_HORIZONTAL_PADDING_PX
+        )
+    if effective_style.get("vertical_padding_px") is None:
+        effective_style["vertical_padding_px"] = (
+            P2_DEFAULT_PARAGRAPH_VERTICAL_PADDING_PX if paragraph else P2_DEFAULT_TEXT_VERTICAL_PADDING_PX
+        )
+
+
+def _style_value_with_default(
+    effective_style: dict[str, object],
+    key: str,
+    configured_value: object | None,
+    default_value: object,
+) -> object:
+    value = effective_style.get(key)
+    if value is not None:
+        return value
+    if configured_value is not None:
+        return configured_value
+    return default_value
+
+
+def _p2_usb_backend_error_message() -> str:
+    return (
+        "PyUSB cannot load a libusb backend for Paperang P2 USB. "
+        "Install libusb-1.0 and a compatible WinUSB/Zadig driver for VID=0x4348 PID=0x5584, "
+        "then run `paperang --json capabilities`."
+    )
+
+
+def _ensure_current_event_loop() -> None:
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+
+class _AutoBleP2Printer:
+    def __init__(self, nus_printer, ff00_printer):
+        self._nus_printer = nus_printer
+        self._ff00_printer = ff00_printer
+        self._active_printer = None
+
+    def connect(self) -> bool:
+        try:
+            if self._nus_printer.connect():
+                self._active_printer = self._nus_printer
+                return True
+        except Exception:
+            self._disconnect_nus()
+
+        if self._ff00_printer.connect():
+            self._active_printer = self._ff00_printer
+            return True
+        return False
+
+    def disconnect(self):
+        if self._active_printer is not None:
+            return self._active_printer.disconnect()
+        self._disconnect_nus()
+        return self._ff00_printer.disconnect()
+
+    def __getattr__(self, name: str):
+        if self._active_printer is None:
+            raise AttributeError(name)
+        return getattr(self._active_printer, name)
+
+    def _disconnect_nus(self) -> None:
+        try:
+            self._nus_printer.disconnect()
+        except Exception:
+            pass

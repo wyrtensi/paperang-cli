@@ -11,10 +11,18 @@ from typing import Any
 
 from paperang_cli.errors import ConfigError
 
-DEFAULT_DISCOVERY_NAMES = ["MiaoMiaoJi", "Paperang", "Paperang_P2S"]
+DEFAULT_DISCOVERY_NAMES = ["MiaoMiaoJi", "Paperang", "Paperang_P2", "Paperang_P2S"]
 MODEL_DEFAULT_PRINTER_WIDTHS = {
     "paperang_p1": 384,
     "paperang_p2": 576,
+}
+MODEL_DEFAULT_PRINT_DENSITIES = {
+    "paperang_p1": 75,
+    "paperang_p2": 95,
+}
+MODEL_DEFAULT_CALIBRATIONS = {
+    "paperang_p1": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.1217},
+    "paperang_p2": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.08472},
 }
 VALID_TRANSPORTS = {"ble", "usb"}
 VALID_FONT_FAMILIES = {"sans", "mono", "serif"}
@@ -34,11 +42,17 @@ class CalibrationSettings:
     advance_mm_per_px: float = 0.1217
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any] | None = None) -> "CalibrationSettings":
+    def from_mapping(
+        cls,
+        data: dict[str, Any] | None = None,
+        *,
+        defaults: "CalibrationSettings | None" = None,
+    ) -> "CalibrationSettings":
         payload = data or {}
+        fallback = defaults or cls()
         return cls(
-            printable_width_mm=_optional_float(payload.get("printable_width_mm"), default=44.0),
-            advance_mm_per_px=_optional_float(payload.get("advance_mm_per_px"), default=0.1217),
+            printable_width_mm=_optional_float(payload.get("printable_width_mm"), default=fallback.printable_width_mm),
+            advance_mm_per_px=_optional_float(payload.get("advance_mm_per_px"), default=fallback.advance_mm_per_px),
         )
 
     def validate(self) -> None:
@@ -298,8 +312,60 @@ def _optional_mapping(value: Any, field_name: str) -> dict[str, Any] | None:
     return value
 
 
+def _select_printer_mapping(
+    data: dict[str, Any],
+    printer_name: str | None,
+) -> tuple[dict[str, Any], str | None, str | None, dict[str, dict[str, Any]]]:
+    printers_payload = data.get("printers")
+    if not printers_payload:
+        if printer_name:
+            raise ConfigError(f"Printer profile '{printer_name}' was requested, but this config has no printers map")
+        return data, None, None, {}
+
+    _require_mapping(printers_payload, "printers")
+    printers: dict[str, dict[str, Any]] = {}
+    for raw_name, raw_profile in printers_payload.items():
+        name = str(raw_name).strip()
+        if not name:
+            raise ConfigError("printers contains an empty profile name")
+        profile = _optional_mapping(raw_profile, f"printers.{name}") or {}
+        if "model" not in profile:
+            raise ConfigError(f"printers.{name}.model is required")
+        printers[name] = dict(profile)
+
+    default_printer = str(data.get("default_printer") or next(iter(printers))).strip()
+    if default_printer not in printers:
+        raise ConfigError(f"default_printer '{default_printer}' is not defined in printers")
+
+    active_printer = str(printer_name or default_printer).strip()
+    if active_printer not in printers:
+        available = ", ".join(sorted(printers))
+        raise ConfigError(f"Unknown printer profile '{active_printer}'. Available profiles: {available}")
+
+    shared = {
+        key: data[key]
+        for key in ("discovery_names", "print_defaults", "presets")
+        if key in data
+    }
+    selected = {**shared, **printers[active_printer]}
+
+    for name, profile in printers.items():
+        validation_payload = {**shared, **profile}
+        PaperangCliConfig._from_selected_mapping(
+            validation_payload,
+            active_printer=name,
+            default_printer=default_printer,
+            printers=printers,
+        )
+
+    return selected, active_printer, default_printer, printers
+
+
 @dataclass(slots=True)
 class PaperangCliConfig:
+    active_printer: str | None = None
+    default_printer: str | None = None
+    printers: dict[str, dict[str, Any]] = field(default_factory=dict)
     model: str = "paperang_p1"
     transport: str | None = None
     macaddress: str = ""
@@ -312,19 +378,44 @@ class PaperangCliConfig:
     presets: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any]) -> "PaperangCliConfig":
+    def from_mapping(cls, data: dict[str, Any], *, printer_name: str | None = None) -> "PaperangCliConfig":
+        selected_data, active_printer, default_printer, printers = _select_printer_mapping(data, printer_name)
+        return cls._from_selected_mapping(
+            selected_data,
+            active_printer=active_printer,
+            default_printer=default_printer,
+            printers=printers,
+        )
+
+    @classmethod
+    def _from_selected_mapping(
+        cls,
+        data: dict[str, Any],
+        *,
+        active_printer: str | None = None,
+        default_printer: str | None = None,
+        printers: dict[str, dict[str, Any]] | None = None,
+    ) -> "PaperangCliConfig":
         defaults = cls()
         model = str(data.get("model", defaults.model))
         default_printer_width = MODEL_DEFAULT_PRINTER_WIDTHS.get(model, defaults.printerwidth)
+        default_print_density = MODEL_DEFAULT_PRINT_DENSITIES.get(model, defaults.print_density)
+        default_calibration = CalibrationSettings.from_mapping(MODEL_DEFAULT_CALIBRATIONS.get(model))
         config = cls(
+            active_printer=active_printer,
+            default_printer=default_printer,
+            printers=dict(printers or {}),
             model=model,
             transport=_normalize_string_choice(data.get("transport")) if data.get("transport") is not None else None,
             macaddress=str(data.get("macaddress", defaults.macaddress)),
             printerwidth=int(data.get("printerwidth", default_printer_width)),
-            print_density=int(data.get("print_density", defaults.print_density)),
+            print_density=int(data.get("print_density", default_print_density)),
             post_print_feed_mm=float(data.get("post_print_feed_mm", defaults.post_print_feed_mm)),
             discovery_names=list(data.get("discovery_names", DEFAULT_DISCOVERY_NAMES)),
-            calibration=CalibrationSettings.from_mapping(_optional_mapping(data.get("calibration"), "calibration")),
+            calibration=CalibrationSettings.from_mapping(
+                _optional_mapping(data.get("calibration"), "calibration"),
+                defaults=default_calibration,
+            ),
             print_defaults=PrintDefaults.from_mapping(_optional_mapping(data.get("print_defaults"), "print_defaults")),
             presets=dict(_optional_mapping(data.get("presets"), "presets") or {}),
         )
@@ -383,17 +474,23 @@ def resolve_config_path(explicit_path: str | os.PathLike[str] | None = None) -> 
     return default_config_path(), "default"
 
 
-def load_config(explicit_path: str | os.PathLike[str] | None = None) -> tuple[PaperangCliConfig, Path, bool]:
+def load_config(
+    explicit_path: str | os.PathLike[str] | None = None,
+    *,
+    printer_name: str | None = None,
+) -> tuple[PaperangCliConfig, Path, bool]:
     path, source = resolve_config_path(explicit_path)
     if path.exists():
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise ConfigError(f"Failed to parse config file {path}: {exc}") from exc
-        return PaperangCliConfig.from_mapping(raw), path, True
+        return PaperangCliConfig.from_mapping(raw, printer_name=printer_name), path, True
 
     if source in {"explicit", "environment"}:
         raise ConfigError(f"Config file does not exist: {path}")
+    if printer_name:
+        raise ConfigError(f"Printer profile '{printer_name}' was requested, but no config file exists at {path}")
 
     return PaperangCliConfig(), path, False
 

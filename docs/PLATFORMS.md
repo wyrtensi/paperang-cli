@@ -8,14 +8,14 @@ Update it whenever validation status changes.
 | Printer | Transport | Windows | macOS | Linux |
 | --- | --- | --- | --- | --- |
 | Paperang P1 | BLE | ✅ Tested (Python 3.14) | ⚠️ Untested (software only) | ⚠️ Untested (software only) |
-| Paperang P2 | USB | ✅ Software (libusb/WinUSB) | ⚠️ Untested | ⚠️ Untested |
-| Paperang P2 | BLE | ⚠️ Requires paperang-p2-lib 0.4.0rc3+ | ⚠️ Untested | ⚠️ Untested |
+| Paperang P2 | BLE FF00/A5 | ✅ Tested (Python 3.14) | ⚠️ Untested | ⚠️ Untested |
+| Paperang P2 | USB | ⚠️ Experimental software path (libusb/WinUSB) | ⚠️ Untested | ⚠️ Untested |
 
 ## Per-OS validation status
 
 | OS | CI runs | Hardware tested | Last validation date |
 | --- | --- | --- | --- |
-| Windows | ✅ | ✅ Python 3.14 + P1 BLE | 2026-06-01 |
+| Windows | ✅ | ✅ Python 3.14 + P1 BLE + P2 BLE FF00/A5 | 2026-06-06 |
 | macOS | ✅ | ❌ (no hardware in CI) | — |
 | Linux | ✅ | ❌ (no hardware in CI) | — |
 
@@ -26,7 +26,7 @@ Run `paperang --json capabilities` to check what's available on your platform.
 The command reports:
 - Whether `bleak` (BLE library) is installed and which backend it uses
 - Which `paperang-p2-lib` version is installed (0.3.x = USB only, 0.4.0rc3+ = USB + BLE)
-- Whether `pyusb` + `libusb` is available for P2 USB
+- Whether `pyusb` can load a real `libusb-1.0` backend for P2 USB
 - Platform-specific notes (e.g., bluez on Linux, CoreBluetooth permissions on macOS)
 
 ## Platform-specific notes
@@ -34,7 +34,8 @@ The command reports:
 ### Windows
 
 - BLE: bleak uses WinRT backend — works out of the box.
-- USB (P2): requires Zadig or WinUSB driver for the printer's USB interface.
+- BLE (P2): FF00/A5 devices advertising as `Paperang_P2` are supported and physically validated on Windows.
+- USB (P2): experimental software path; requires a loadable `libusb-1.0` backend plus Zadig or WinUSB driver for the printer's USB interface.
 - Config: `%APPDATA%\paperang-cli\paperang-cli.config.json`
 
 ### macOS
@@ -51,6 +52,8 @@ The command reports:
 - Config: `$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json` or `~/.config/paperang-cli/...`
 
 ## Versioned history
+
+- 0.2.0: Adds physically validated P2 BLE FF00/A5 printing on Windows, named multi-printer profiles via `--printer`, P2-specific calibration and 576-dot render defaults, and P2 dry-run coverage for text, paragraph, image, compose, and rotated print paths.
 
 - 0.1.9: Initial cross-platform support surface. CI runs on 3 OS × 5 Python.
   macOS config path added. Capability detection command added.

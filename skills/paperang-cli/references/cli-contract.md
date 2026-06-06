@@ -74,11 +74,11 @@ For `paperang_p1`:
 
 For `paperang_p2`:
 
-- live printer communication supports USB and Bluetooth Low Energy (BLE)
-- the public Python facade exposes explicit transport selection with `usb` or `ble`
+- the supported and physically validated live transport is Bluetooth Low Energy (BLE) through the FF00/A5 profile on Windows
+- the public Python facade exposes explicit transport selection with `ble` and an experimental `usb` software path
+- P2 USB remains experimental and is not a supported validated live path in this repository yet
 - cable and generic `local` fallbacks are not separate supported transports in this project
-- physical validation for P2 USB and BLE has not been completed in this repository yet
-- real BLE communication and physical printing have been tested only on Windows for validated paths
+- real P2 BLE communication and physical printing have been tested only on Windows
 - Linux and macOS CI checks do not prove live hardware compatibility
 
 Do not assume that additional undocumented models or transports exist merely because the implementation has extension points.
@@ -98,6 +98,8 @@ Default paths:
 - Linux and macOS: `$XDG_CONFIG_HOME/paperang-cli/paperang-cli.config.json`, or `~/.config/paperang-cli/paperang-cli.config.json`
 
 Use `paperang --json config show` to inspect the active settings, nested `print_defaults`, and resolved path.
+
+Configs may define a `printers` map plus `default_printer`. When `printers` is present, agents should select a named profile with global `--printer NAME` instead of editing model, transport, or address fields between commands. If `--printer` is omitted, `default_printer` is used.
 
 The active config may now contain a nested `print_defaults` object for supported-model styling defaults. CLI flags override those defaults for one invocation.
 
@@ -137,7 +139,7 @@ These commands never consume paper:
 
 Every `print ... --dry-run` flow is non-printing and does not connect to the printer.
 
-Agents must run a successful matching dry-run before any real print. A matching dry-run uses the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options as the intended real print. If the CLI invocation relies on config-driven styling defaults, the dry-run must be executed with the same active config.
+Agents must run a successful matching dry-run before any real print. A matching dry-run uses the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, printer profile, and feed options as the intended real print. If the CLI invocation relies on config-driven styling defaults, the dry-run must be executed with the same active config and `--printer` value.
 
 ### Paper-consuming commands
 
@@ -284,6 +286,7 @@ When an automation or agent needs to know what Python API surface is actually su
 | --- | --- |
 | `--json` | Emit machine-readable JSON output. Preferred for agents. |
 | `--config PATH` | Use a specific JSON config file. |
+| `--printer NAME` | Select a named profile from the config `printers` map. Keep this identical between matching dry-run and real print commands. |
 | `--debug` | Enable verbose diagnostic logging. Use when BLE investigation requires it. |
 | `--version` | Show the installed CLI version. |
 
@@ -295,7 +298,7 @@ When an automation or agent needs to know what Python API surface is actually su
 | --- | --- | --- | --- |
 | `api list` | List known model-specific API entries and whether they are implemented in the current package version. | none | array of entries with `api`, `model`, `available`, `status`, nullable `class_name`, and nullable `planned_class_name` |
 | `api p1` | Show the supported `PaperangP1` Python API surface, constructor options, method list, styling support, safety requirements, and parity gaps. | none | `api`, `availability`, nullable `class_name`, nullable `planned_class_name`, nullable `import_path`, nullable `implementation_module`, `model`, nullable `transport`, `config_loading`, `constructor_options`, `methods`, `styling_support`, `safety`, `unsupported_parity_gaps` |
-| `api p2` | Show the supported `PaperangP2` Python API surface, including explicit USB or BLE transport selection and current parity gaps. | none | same fields as `api p1`, populated for the live `PaperangP2` facade |
+| `api p2` | Show the supported `PaperangP2` Python API surface, including supported BLE transport, experimental USB transport selection, and current parity gaps. | none | same fields as `api p1`, populated for the live `PaperangP2` facade |
 
 ### Query commands
 

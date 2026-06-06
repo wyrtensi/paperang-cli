@@ -18,6 +18,7 @@ def test_load_config_uses_defaults_when_default_file_missing(monkeypatch, tmp_pa
     assert resolved_path == missing_path
     assert settings.model == "paperang_p1"
     assert settings.post_print_feed_mm == 5.0
+    assert "Paperang_P2" in settings.discovery_names
 
 
 def test_default_config_path_uses_appdata_on_windows(monkeypatch, tmp_path):
@@ -93,6 +94,109 @@ def test_load_config_accepts_partial_json_mapping(tmp_path):
     assert settings.print_defaults.compose.layout == "text-above"
 
 
+def test_load_config_selects_default_printer_profile(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p2-desk",
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:01",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:02",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.active_printer == "p2-desk"
+    assert settings.default_printer == "p2-desk"
+    assert settings.model == "paperang_p2"
+    assert settings.transport == "ble"
+    assert settings.macaddress == "AA:BB:CC:DD:EE:02"
+    assert settings.printerwidth == 576
+    assert settings.print_density == 95
+
+
+def test_load_config_selects_requested_printer_profile(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p1-kitchen",
+                "discovery_names": ["Paperang", "Paperang_P2"],
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:01",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:02",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path, printer_name="p2-desk")
+
+    assert settings.active_printer == "p2-desk"
+    assert settings.model == "paperang_p2"
+    assert settings.discovery_names == ["Paperang", "Paperang_P2"]
+
+
+def test_load_config_rejects_unknown_printer_profile(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="Unknown printer profile 'missing'"):
+        config_module.load_config(config_path, printer_name="missing")
+
+
+def test_load_config_rejects_profile_without_model(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "printers": {
+                    "p1-kitchen": {
+                        "macaddress": "AA:BB:CC:DD:EE:01",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="printers.p1-kitchen.model is required"):
+        config_module.load_config(config_path)
+
+
 def test_load_config_accepts_p2_usb_transport(tmp_path):
     config_path = tmp_path / "paperang-cli.config.json"
     config_path.write_text(
@@ -126,6 +230,77 @@ def test_load_config_uses_p2_default_printer_width(tmp_path):
     settings, _, _ = config_module.load_config(config_path)
 
     assert settings.printerwidth == 576
+
+
+def test_load_config_uses_p2_default_print_density(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.print_density == 95
+
+
+def test_load_config_uses_p2_default_calibration(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.calibration.printable_width_mm == 44.0
+    assert settings.calibration.advance_mm_per_px == pytest.approx(0.08472)
+
+
+def test_load_config_keeps_explicit_p2_calibration(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+                "calibration": {
+                    "printable_width_mm": 45.0,
+                    "advance_mm_per_px": 0.09,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.calibration.printable_width_mm == 45.0
+    assert settings.calibration.advance_mm_per_px == pytest.approx(0.09)
+
+
+def test_load_config_allows_explicit_p2_print_density(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model": "paperang_p2",
+                "print_density": 75,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.print_density == 75
 
 
 def test_load_config_accepts_partial_nested_print_defaults(tmp_path):

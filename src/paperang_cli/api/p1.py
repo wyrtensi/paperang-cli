@@ -25,12 +25,13 @@ class PaperangP1:
         *,
         address: str | None = None,
         config_path: str | PathLike[str] | None = None,
+        printer_name: str | None = None,
         printer_width: int | None = None,
         print_density: int | None = None,
         post_print_feed_mm: float | None = None,
         discovery_names: list[str] | None = None,
     ) -> None:
-        base_settings, resolved_config_path, config_exists = _load_api_settings(config_path)
+        base_settings, resolved_config_path, config_exists = _load_api_settings(config_path, printer_name=printer_name)
         self.settings = _merge_settings(
             base_settings,
             address=address,
@@ -271,11 +272,15 @@ class PaperangP1:
 
 def _load_api_settings(
     config_path: str | PathLike[str] | None,
+    *,
+    printer_name: str | None = None,
 ) -> tuple[PaperangCliConfig, Path | None, bool]:
     if config_path is None:
+        if printer_name:
+            raise ValueError("printer_name requires config_path")
         return PaperangCliConfig(), None, False
 
-    settings, resolved_path, config_exists = load_config(config_path)
+    settings, resolved_path, config_exists = load_config(config_path, printer_name=printer_name)
     return settings, resolved_path, config_exists
 
 
@@ -300,4 +305,9 @@ def _merge_settings(
     if discovery_names is not None:
         merged["discovery_names"] = list(discovery_names)
 
-    return PaperangCliConfig.from_mapping(merged)
+    return PaperangCliConfig._from_selected_mapping(
+        merged,
+        active_printer=base_settings.active_printer,
+        default_printer=base_settings.default_printer,
+        printers=base_settings.printers,
+    )

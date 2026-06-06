@@ -5,7 +5,7 @@
 These options apply before the subcommand:
 
 ```powershell
-paperang --config PATH --json --debug <command>
+paperang --config PATH --printer NAME --json --debug <command>
 ```
 
 The installed package exposes both `paperang` and `paperang-cli`.
@@ -20,6 +20,10 @@ Use a specific JSON config file for this invocation.
 ### `--json`
 
 Return structured output suitable for scripts and agents.
+
+### `--printer NAME`
+
+Select a named profile from the active config's `printers` map. The option works for diagnostics and all print commands. Keep the same `--printer` value between a dry-run and its matching real print.
 
 ### `--debug`
 
@@ -403,7 +407,7 @@ Current note:
 
 - this path should be treated with the same caution as `print image`
 - `--dry-run` validates rendering and packaging, not the final physical result
-- transport behavior remains model-specific: `paperang_p1` uses BLE only, while `paperang_p2` uses USB by default or BLE when configured
+- transport behavior remains model-specific: `paperang_p1` uses BLE only, while `paperang_p2` is supported through BLE and keeps USB only as an experimental software path
 
 ## `print self-test`
 
@@ -472,4 +476,4 @@ This is mainly useful for protocol reuse in a longer-lived Python process. Ordin
 
 For `paperang_p1`, the standalone project currently supports Bluetooth only. A cable/local transport is not exposed because it has not been validated as a usable data path.
 
-For `paperang_p2`, the standalone project supports USB and BLE in software. USB is the default transport when the model resolves to P2, while BLE can be selected explicitly. P2 hardware validation is still pending in this repository.
+For `paperang_p2`, the standalone project supports BLE FF00/A5 as the physically validated path on Windows. USB remains available as an experimental software path and should not be treated as the supported P2 path.

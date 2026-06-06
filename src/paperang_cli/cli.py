@@ -34,15 +34,22 @@ def configure_logging(debug: bool) -> None:
     type=click.Path(path_type=Path, dir_okay=False),
     help="Path to a paperang-cli JSON config file.",
 )
+@click.option("--printer", "printer_name", type=str, help="Named printer profile from the config printers map.")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.option("--debug", is_flag=True, help="Enable verbose logging.")
 @click.version_option(version=__version__)
 @click.pass_context
-def cli(ctx: click.Context, config_path: Path | None, json_output: bool, debug: bool) -> None:
+def cli(
+    ctx: click.Context,
+    config_path: Path | None,
+    printer_name: str | None,
+    json_output: bool,
+    debug: bool,
+) -> None:
     """Standalone CLI for Paperang printers."""
     configure_logging(debug)
     try:
-        settings, resolved_path, config_exists = load_config(config_path)
+        settings, resolved_path, config_exists = load_config(config_path, printer_name=printer_name)
     except PaperangCliError as exc:
         if json_output:
             click.echo(
@@ -66,6 +73,7 @@ def cli(ctx: click.Context, config_path: Path | None, json_output: bool, debug: 
         "settings": settings,
         "config_path": resolved_path,
         "config_exists": config_exists,
+        "printer_name": printer_name,
         "json_output": json_output,
         "debug": debug,
     }

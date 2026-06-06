@@ -1,6 +1,6 @@
 ---
 name: paperang-cli
-description: "Use when operating, automating, debugging, reviewing, or extending paperang-cli for Paperang P1 or P2 printers: BLE or USB discovery/readiness, JSON output, configuration, dry-run validation, paper-use approval, image or compose printing, self-test caution, CLI contracts, rendering, drivers, protocol changes, tests, or release automation."
+description: "Use when operating, automating, debugging, reviewing, or extending paperang-cli for Paperang P1 or P2 printers: BLE support, experimental P2 USB discovery/readiness, JSON output, configuration, dry-run validation, paper-use approval, image or compose printing, self-test caution, CLI contracts, rendering, drivers, protocol changes, tests, or release automation."
 license: MIT
 ---
 
@@ -28,11 +28,12 @@ Treat these rules as hard requirements:
 3. Use `config show`, `discover`, `probe`, `status`, `battery`, and `mac` for first contact with an unknown device, explicit diagnostics, or recovery after a failed real print. Do not run live BLE readiness commands in parallel.
 4. Run a successful matching `print ... --dry-run` before every real print.
 5. Keep content, image, layout, mode, conversion, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, and feed options unchanged between dry-run and real print.
-6. Treat an imperative user request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run. Report the dry-run result, but do not ask the same question again.
-7. Ask for explicit approval before consuming paper when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints.
-8. Add `--allow-paper-use` only after approval from the current request or a follow-up for `print text`, `print paragraph`, `print image`, or `print compose`.
-9. Add `--allow-large-paper-use` only after specific follow-up approval for `print self-test`.
-10. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
+6. When the config has multiple named printers, choose the intended profile with `--printer NAME` and keep that value unchanged between dry-run and real print.
+7. Treat an imperative user request such as "print this" as approval for exactly one matching non-self-test real print after a successful dry-run. Report the dry-run result, but do not ask the same question again.
+8. Ask for explicit approval before consuming paper when the request is exploratory or ambiguous, when parameters change after the dry-run, or before copies, retries, and repeated prints.
+9. Add `--allow-paper-use` only after approval from the current request or a follow-up for `print text`, `print paragraph`, `print image`, or `print compose`.
+10. Add `--allow-large-paper-use` only after specific follow-up approval for `print self-test`.
+11. If the CLI returns `SAFETY_ERROR`, stop. Never automatically append an allow flag or retry.
 
 `print image` and `print compose` are experimental physical-output paths. A successful dry-run validates rendering and packaging, not printer readiness or final paper quality.
 
@@ -45,12 +46,14 @@ Treat these rules as hard requirements:
 
 ## Supported Hardware
 
-The current release supports `paperang_p1` over BLE and `paperang_p2` over USB or BLE.
+The current release supports `paperang_p1` over BLE and `paperang_p2` over the validated BLE FF00/A5 path.
 
-`paperang_p2` support is implemented in software via `paperang-p2-lib`, but physical USB and BLE validation for P2 has not been completed in this repository yet.
+`paperang_p2` USB remains available only as an experimental software path via `paperang-p2-lib`.
 
 - Do not invent or document local or cable fallbacks beyond the supported model transports.
 - For `paperang_p1`, do not invent a USB or local fallback.
+- For `paperang_p2`, prefer BLE for supported live communication and treat USB as experimental.
+- If a config defines `printers`, select P1/P2 by profile name with `--printer NAME` instead of rewriting config fields between commands.
 - Do not assume other undocumented models are available because extension points exist.
 - Ask for manual physical validation before repeated image or compose printing.
 

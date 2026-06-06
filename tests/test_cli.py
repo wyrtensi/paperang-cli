@@ -108,7 +108,7 @@ def test_probe_json_reports_local_transport_support_for_p2_usb(monkeypatch):
             return True
 
         def local_transport_note(self):
-            return "Paperang P2 supports USB transport in this project. BLE is also available when transport='ble'."
+            return "Paperang P2 is supported through BLE FF00/A5 when transport='ble'. USB is available only as an experimental software path."
 
     runner = CliRunner()
     monkeypatch.setattr(registry, "get_driver", lambda settings: FakeP2Driver())
@@ -483,6 +483,55 @@ def test_config_show_json():
     assert '"supported_models": [' in result.output
 
 
+def test_global_printer_option_selects_named_profile(monkeypatch, fake_driver, tmp_path):
+    captured = {}
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p1-kitchen",
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:01",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:02",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def fake_get_driver(settings):
+        captured["settings"] = settings
+        return fake_driver
+
+    runner = CliRunner()
+    monkeypatch.setattr(registry, "get_driver", fake_get_driver)
+
+    result = runner.invoke(
+        cli,
+        [
+            "--json",
+            "--config",
+            str(config_path),
+            "--printer",
+            "p2-desk",
+            "status",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["settings"].active_printer == "p2-desk"
+    assert captured["settings"].model == "paperang_p2"
+    assert captured["settings"].macaddress == "AA:BB:CC:DD:EE:02"
+
+
 def test_api_p1_json():
     runner = CliRunner()
 
@@ -545,7 +594,7 @@ def test_api_p2_json_reports_live_contract():
     assert '"available": true' in result.output
     assert '"status": "available"' in result.output
     assert '"class_name": "PaperangP2"' in result.output
-    assert '"transport": "usb | ble"' in result.output
+    assert '"transport": "ble"' in result.output
 
 
 def test_api_p2_human_output_reports_live_contract():
@@ -557,4 +606,4 @@ def test_api_p2_human_output_reports_live_contract():
     assert "API: PaperangP2" in result.output
     assert "Status: available" in result.output
     assert "Import: from paperang_cli import PaperangP2" in result.output
-    assert "Transport: usb | ble" in result.output
+    assert "Transport: ble" in result.output

@@ -52,6 +52,8 @@ python -m paperang_cli --help
 
 - Keep Bluetooth enabled.
 - Ensure the printer is powered on before `status` or `discover`.
+- For P2 BLE, devices advertising as `Paperang_P2` may expose the `ff00` profile with `A5...5A` protocol frames. The CLI can discover, probe, query diagnostics, and print through that supported path; real P2 BLE output has been physically validated on Windows.
+- For P2 USB, `paperang --json capabilities` must report `p2.usb` as available. USB is still an experimental software path. If the capability report says PyUSB is installed but no `libusb-1.0` backend is available, install a loadable libusb backend before retrying USB commands.
 - If Windows has Bluetooth pairing problems, the root repository docs may still be useful because the BLE stack is the same family of behavior.
 - `paperang-cli` does not automate pairing in the current release.
 

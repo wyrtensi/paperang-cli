@@ -19,7 +19,7 @@ The current release supports two live models:
 - `paperang_p1`
 - `paperang_p2`
 
-Paperang P2 is supported in software over USB and BLE, but it has not been hardware-validated in this repository yet.
+Paperang P2 is supported and physically validated over BLE FF00/A5 on Windows. The P2 USB path is still an experimental software path and has not been hardware-validated in this repository yet.
 
 The CLI currently includes:
 

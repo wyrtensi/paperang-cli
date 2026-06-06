@@ -1,5 +1,18 @@
 {
   "model": "paperang_p1",
+  "default_printer": "p1-main",
+  "printers": {
+    "p1-main": {
+      "model": "paperang_p1",
+      "transport": "ble",
+      "macaddress": "04:7F:0E:3A:4F:31"
+    },
+    "p2-main": {
+      "model": "paperang_p2",
+      "transport": "ble",
+      "macaddress": "01:54:8D:17:B3:F2"
+    }
+  },
   "transport": null,
   "macaddress": "04:7F:0E:3A:4F:31",
   "printerwidth": 384,
@@ -12,6 +25,7 @@
   "discovery_names": [
     "MiaoMiaoJi",
     "Paperang",
+    "Paperang_P2",
     "Paperang_P2S"
   ],
   "print_defaults": {

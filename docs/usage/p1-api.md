@@ -58,6 +58,7 @@ PaperangP1(
     *,
     address: str | None = None,
     config_path: str | os.PathLike[str] | None = None,
+    printer_name: str | None = None,
     printer_width: int | None = None,
     print_density: int | None = None,
     post_print_feed_mm: float | None = None,
@@ -69,6 +70,7 @@ Constructor behavior:
 
 - if `config_path` is omitted, the class starts from built-in defaults instead of reading the per-user CLI config automatically
 - if `config_path` is provided, the file is loaded with the same schema validation used by the CLI
+- if the config defines `printers`, pass `printer_name="..."` to select one named profile
 - explicit constructor arguments override values loaded from `config_path`
 
 Important defaults inherited from the existing P1 implementation:

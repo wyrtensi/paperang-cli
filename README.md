@@ -20,7 +20,8 @@ The current release ships two supported models with different validation levels:
 | Printer | Transport | Status |
 | --- | --- | --- |
 | Paperang P1 | Bluetooth Low Energy (BLE) | Supported |
-| Paperang P2 | USB + Bluetooth Low Energy (BLE) | Supported in software; not physically validated in this repo yet |
+| Paperang P2 | Bluetooth Low Energy (BLE, FF00/A5) | Supported and physically validated on Windows |
+| Paperang P2 | USB | Experimental software path; not physically validated in this repo yet |
 
 Local, cable, and USB data transports are not supported for Paperang P1 in this package.
 
@@ -28,7 +29,8 @@ Real printer communication and physical printing have been tested only on Window
 
 ## Features
 
-- Discover supported Paperang printers over BLE, or detect a connected P2 over USB
+- Discover supported Paperang printers over BLE, or detect a connected P2 over the experimental USB path
+- Select named P1/P2 printer profiles with `--printer NAME` from one shared config
 - Check battery level, Bluetooth MAC address, and live printer status
 - Print short text or wrapped paragraphs
 - Print local images with sticker and photo conversion presets
@@ -94,7 +96,7 @@ npm install --global paperang-cli
 
 The npm wrapper installs the matching Python package from PyPI and exposes the same two commands. Python `3.10` or newer is still required.
 
-The published dependency set includes the upstream `paperang-p2-lib` runtime so P2 USB and BLE support install with the main package.
+The published dependency set includes the upstream `paperang-p2-lib` runtime for the experimental P2 USB path and for P2 units that expose the upstream NUS BLE profile. P2 units advertising as `Paperang_P2` with the FF00/A5 BLE profile are supported directly by this package.
 
 The npm wrapper uses a `postinstall` lifecycle script to run `pip install` for the matching Python package version. See the [security policy](SECURITY.md#npm-postinstall-behavior) for details and an `--ignore-scripts` audit path.
 
@@ -103,8 +105,8 @@ The npm wrapper uses a `postinstall` lifecycle script to run `pip install` for t
 | Printer | Transport | Windows | macOS | Linux |
 | --- | --- | --- | --- | --- |
 | Paperang P1 | BLE | ✅ Tested (Python 3.14) | ⚠️ Untested (software only) | ⚠️ Untested (software only) |
-| Paperang P2 | USB | ✅ Software (libusb/WinUSB) | ⚠️ Untested | ⚠️ Untested |
-| Paperang P2 | BLE | ⚠️ Requires paperang-p2-lib 0.4.0rc3+ | ⚠️ Untested | ⚠️ Untested |
+| Paperang P2 | BLE FF00/A5 | ✅ Tested (Python 3.14) | ⚠️ Untested | ⚠️ Untested |
+| Paperang P2 | USB | ⚠️ Experimental software path (libusb/WinUSB) | ⚠️ Untested | ⚠️ Untested |
 
 > **Honest validation:** CI runs on all 3 OS, but real BLE printing has been tested only on Windows.
 > macOS and Linux support is software-only and requires manual user validation.
@@ -328,7 +330,7 @@ When a dry-run uses length-aware styling, the JSON result can include `estimated
 from paperang_cli import PaperangP1, PaperangP2
 
 p1 = PaperangP1(address="AA:BB:CC:DD:EE:FF")
-p2 = PaperangP2(transport="usb")
+p2 = PaperangP2(transport="ble", address="01:54:8D:17:B3:F2")
 
 p1.connect()
 status = p2.get_status()
@@ -467,6 +469,7 @@ Inspect the active config:
 
 ```powershell
 paperang --json config show
+paperang --json --printer p2-main config show
 ```
 
 ```bash
@@ -500,6 +503,8 @@ Default paths:
 
 See [Configuration](docs/usage/configuration.md) for the full schema.
 
+When one config manages multiple printers, define `printers` and `default_printer`, then select a target with global `--printer NAME` for diagnostics, dry-runs, and real prints.
+
 ## Documentation
 
 - [Documentation index](docs/index.md)
@@ -530,7 +535,9 @@ The Paperang P1 logic in this standalone CLI builds on earlier reverse engineeri
 - `ihc童鞋@提不起劲`
 - `BroncoTc`
 
-Paperang P2 support in this repository uses `mdj2812/paperang-p2-lib` and references `mdj2812/paperang-p2-usb`. The USB and BLE code paths are implemented in software, but this repository has not yet physically validated P2 hardware on either path.
+Paperang P2 BLE FF00/A5 support is implemented directly in this repository and has been physically validated on Windows. The USB path still uses `mdj2812/paperang-p2-lib` and references `mdj2812/paperang-p2-usb`; treat that USB path as experimental until hardware validation is completed.
+
+The current P2 planning calibration uses `advance_mm_per_px=0.08472`, measured from an approximately `61 mm` printed marker distance over `720 px` on the P2 BLE calibration strip.
 
 The current `paperang-cli` package is maintained by `wyrtensi`.
 

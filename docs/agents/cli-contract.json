@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.1.9",
+  "package_version": "0.2.0",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
@@ -39,22 +39,25 @@
     {
       "id": "paperang_p2",
       "status": "supported",
-      "transport": "usb | ble",
+      "transport": "ble",
       "supported_live_transports": [
-        "usb",
         "ble"
+      ],
+      "experimental_live_transports": [
+        "usb"
       ],
       "unsupported_live_transports": [
         "local",
         "cable"
       ],
-      "hardware_tested_platforms": [],
+      "hardware_tested_platforms": [
+        "windows"
+      ],
       "compatibility_checks_without_hardware_validation": [
-        "windows",
         "linux",
         "macos"
       ],
-      "notes": "For paperang_p2, live printer communication supports USB and BLE in software. Physical validation for P2 USB and BLE has not been completed in this repository yet. Real BLE communication and physical printing have been tested only on Windows for validated paths."
+      "notes": "For paperang_p2, the supported and physically validated live path is BLE through the FF00/A5 profile on Windows. USB remains an experimental software path and is not a supported validated live path in this repository yet. Linux and macOS CI checks do not prove live hardware compatibility."
     }
   ],
   "config_resolution": [
@@ -94,6 +97,11 @@
       "description": "Use a specific JSON config file."
     },
     {
+      "name": "--printer",
+      "type": "string",
+      "description": "Select a named profile from the config printers map. Keep the same value between matching dry-run and real print commands."
+    },
+    {
       "name": "--json",
       "type": "flag",
       "description": "Emit machine-readable JSON output.",
@@ -129,7 +137,7 @@
   "safety_policy": {
     "explicit_user_request_required_for_paper_use": true,
     "successful_matching_dry_run_required_before_real_print": true,
-    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, style-json payload, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config.",
+    "matching_dry_run_definition": "Use the same print subcommand, content, image, layout, conversion mode, font size, min-font-size, font-fit mode, font family, orientation, autofit intent, style-json payload, printer profile, and feed options as the intended real print. If config-driven styling defaults are involved, use the same active config and --printer value.",
     "report_dry_run_before_real_print": true,
     "ordinary_one_off_print_fast_path": "Run the matching print ... --dry-run, then the matching real print. The real print command performs its own discovery, connection, and required transport initialization.",
     "separate_live_readiness_commands_required_before_each_real_print": false,

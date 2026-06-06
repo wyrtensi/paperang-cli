@@ -41,7 +41,7 @@ jobs:
                   "macos": {"ci": True, "hardware_tested": False, "last_validation": None},
                   "linux": {"ci": True, "hardware_tested": False, "last_validation": None},
               },
-              "version": "0.1.9",
+              "version": "0.2.0",
           }
 
           platforms_md = ""

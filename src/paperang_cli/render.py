@@ -134,6 +134,7 @@ def _render_text_canvas(
     line_spacing_px: int | None = None,
     wrap_to_printer_width: bool = True,
     break_long_words: bool = False,
+    binary_text: bool = False,
 ) -> Image.Image:
     horizontal_padding = horizontal_padding_px if horizontal_padding_px is not None else (12 if paragraph else 16)
     vertical_padding = vertical_padding_px if vertical_padding_px is not None else (10 if paragraph else 12)
@@ -157,7 +158,9 @@ def _render_text_canvas(
     image_width = max(text_width + horizontal_padding * 2, 1)
 
     image_height = max(text_height + vertical_padding * 2, 1)
-    text_image = Image.new("L", (image_width, image_height), 255)
+    image_mode = "1" if binary_text else "L"
+    background = 1 if binary_text else 255
+    text_image = Image.new(image_mode, (image_width, image_height), background)
     text_draw = ImageDraw.Draw(text_image)
     current_y = vertical_padding
     for line, (_, _, bbox) in zip(lines, line_metrics):
@@ -169,7 +172,7 @@ def _render_text_canvas(
         )
         current_y += line_height + line_spacing
 
-    return text_image
+    return text_image.convert("L")
 
 
 def _render_image_binary(
@@ -316,6 +319,7 @@ def render_text_job(
     break_long_words: bool = False,
     advance_mm_per_px: float = 0.1217,
     printable_width_mm: float | None = None,
+    binary_text: bool = False,
 ) -> RenderedBitstream:
     resolved_font_fit = _resolve_font_fit(font_fit)
     resolved_font_size = font_size or (DEFAULT_PARAGRAPH_FONT_SIZE if paragraph else DEFAULT_TEXT_FONT_SIZE)
@@ -350,6 +354,7 @@ def render_text_job(
             line_spacing_px=line_spacing_px,
             wrap_to_printer_width=orientation == "normal",
             break_long_words=break_long_words,
+            binary_text=binary_text,
         )
         try:
             final_canvas = _finalize_canvas(text_image, printer_width=printer_width, orientation=orientation)
@@ -493,6 +498,7 @@ def render_text_bitstream(
     break_long_words: bool = False,
     advance_mm_per_px: float = 0.1217,
     printable_width_mm: float | None = None,
+    binary_text: bool = False,
 ) -> bytes:
     return render_text_job(
         text,
@@ -512,6 +518,7 @@ def render_text_bitstream(
         break_long_words=break_long_words,
         advance_mm_per_px=advance_mm_per_px,
         printable_width_mm=printable_width_mm,
+        binary_text=binary_text,
     ).bitstream
 
 

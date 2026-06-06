@@ -37,7 +37,7 @@ def test_api_contract_for_p2_is_available():
     assert contract["availability"]["available"] is True
     assert contract["class_name"] == "PaperangP2"
     assert contract["import_path"] == "from paperang_cli import PaperangP2"
-    assert contract["transport"] == "usb | ble"
+    assert contract["transport"] == "ble"
     assert contract["methods"]
 
 
@@ -178,6 +178,37 @@ def test_api_print_compose_resolves_mode_and_layout(monkeypatch, fake_driver, tm
     assert fake_driver.calls[-1][1]["font_fit"] == "largest-fitting"
     assert fake_driver.calls[-1][1]["mode"] == "photo"
     assert fake_driver.calls[-1][1]["conversion"] == "dither"
+
+
+def test_p2_api_can_select_named_printer_profile(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p1-kitchen",
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:01",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                        "macaddress": "AA:BB:CC:DD:EE:02",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    printer = PaperangP2(config_path=config_path, printer_name="p2-desk")
+
+    assert printer.settings.active_printer == "p2-desk"
+    assert printer.settings.model == "paperang_p2"
+    assert printer.settings.macaddress == "AA:BB:CC:DD:EE:02"
+    assert printer.settings.printerwidth == 576
 
 
 def test_api_bt_mac_alias_delegates(monkeypatch, fake_driver):

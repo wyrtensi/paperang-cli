@@ -33,6 +33,12 @@ P1_API_CONTRACT = {
             "description": "Optional path to a paperang-cli JSON config file.",
         },
         {
+            "name": "printer_name",
+            "type": "str | None",
+            "default": None,
+            "description": "Optional named printer profile to load from config_path when the config defines printers.",
+        },
+        {
             "name": "printer_width",
             "type": "int | None",
             "default": None,
@@ -177,16 +183,16 @@ P2_API_CONTRACT = {
     "availability": {
         "available": True,
         "status": "available",
-        "note": "Supported in this package version, with explicit USB or BLE transport selection.",
+        "note": "Supported in this package version through BLE FF00/A5, with an experimental USB software path still exposed.",
     },
     "class_name": "PaperangP2",
     "planned_class_name": None,
     "import_path": "from paperang_cli import PaperangP2",
     "implementation_module": "paperang_cli.api.p2",
     "model": "paperang_p2",
-    "transport": "usb | ble",
+    "transport": "ble",
     "config_loading": {
-        "default_behavior": "The constructor uses built-in defaults unless config_path is provided. It always forces model=paperang_p2 and defaults transport to USB unless transport is explicitly set to BLE.",
+        "default_behavior": "The constructor uses built-in defaults unless config_path is provided. It always forces model=paperang_p2. Use transport='ble' for the supported P2 path; the omitted-transport default remains USB for backward compatibility and is experimental.",
         "config_path_supported": True,
     },
     "constructor_options": [
@@ -194,19 +200,25 @@ P2_API_CONTRACT = {
             "name": "address",
             "type": "str | None",
             "default": None,
-            "description": "Optional BLE MAC address override. Ignored for default USB transport.",
+            "description": "Optional BLE MAC address override. Ignored for the experimental USB transport.",
         },
         {
             "name": "transport",
             "type": "str | None",
             "default": None,
-            "description": "Optional transport override. Use 'usb' or 'ble'. Defaults to USB when omitted.",
+            "description": "Optional transport override. Use 'ble' for the supported P2 path or 'usb' for the experimental software path.",
         },
         {
             "name": "config_path",
             "type": "str | os.PathLike[str] | None",
             "default": None,
             "description": "Optional path to a paperang-cli JSON config file.",
+        },
+        {
+            "name": "printer_name",
+            "type": "str | None",
+            "default": None,
+            "description": "Optional named printer profile to load from config_path when the config defines printers.",
         },
         {
             "name": "printer_width",
@@ -238,7 +250,7 @@ P2_API_CONTRACT = {
             "name": "discover",
             "returns": "list[PrinterDevice]",
             "paper_consuming": False,
-            "description": "Discover a connected USB P2 printer or nearby supported BLE devices, depending on the configured transport.",
+            "description": "Discover nearby supported BLE devices, or a connected USB P2 printer when the experimental USB transport is selected.",
         },
         {
             "name": "connect",

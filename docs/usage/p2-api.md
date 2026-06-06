@@ -4,7 +4,9 @@
 
 `paperang-cli` exposes a high-level `PaperangP2` class for scripts that want the repository's CLI-aligned render, dry-run, and safety behavior on top of a live P2 transport backend.
 
-The implementation uses `mdj2812/paperang-p2-lib` for runtime USB and BLE communication and references `mdj2812/paperang-p2-usb` for USB behavior. Paperang P2 is implemented in software in this repository, but physical USB and BLE validation has not been completed here yet.
+The physically validated P2 path in this repository is BLE FF00/A5 on Windows. Some P2 units advertise as `Paperang_P2` and expose that `ff00` BLE profile with `A5...5A` protocol frames; this repository can discover, connect, query diagnostics, and print through RawBT-style raster packets over that profile.
+
+The USB path remains an experimental software path that uses `mdj2812/paperang-p2-lib` and references `mdj2812/paperang-p2-usb`; it is not the validated P2 path in this repository yet.
 
 Import it with:
 
@@ -17,7 +19,7 @@ from paperang_cli import PaperangP2
 Current scope:
 
 - Paperang P2 only
-- USB or BLE transport selected through the constructor or config
+- BLE transport for the validated FF00/A5 path, with an experimental USB transport still available in software
 - high-level status, battery, MAC, text, paragraph, image, compose, and self-test operations
 - config-driven styling defaults for text, paragraph, image, and ordinary compose jobs
 
@@ -26,14 +28,14 @@ Out of scope:
 - low-level transport or packet classes as public stable API
 - upstream extras such as QR printing, pickup-code printing, and profile-specific commands
 - rotated compose rendering
-- hardware-validation claims for P2 in this repository
+- hardware-validation claims for P2 USB in this repository
 
 ## Quick Start
 
 ```python
 from paperang_cli import PaperangP2
 
-printer = PaperangP2(transport="usb")
+printer = PaperangP2(transport="ble", address="04:7F:0E:3A:4F:31")
 status = printer.get_status()
 preview = printer.print_text("Hello from Paperang P2", dry_run=True)
 
@@ -41,10 +43,10 @@ print(status.battery_percent)
 print(preview.bytes_sent)
 ```
 
-For BLE instead of USB:
+The experimental USB path is still exposed for research and backward compatibility:
 
 ```python
-printer = PaperangP2(transport="ble", address="04:7F:0E:3A:4F:31")
+printer = PaperangP2(transport="usb")
 ```
 
 ## Constructor
@@ -55,6 +57,7 @@ PaperangP2(
     address: str | None = None,
     transport: str | None = None,
     config_path: str | os.PathLike[str] | None = None,
+    printer_name: str | None = None,
     printer_width: int | None = None,
     print_density: int | None = None,
     post_print_feed_mm: float | None = None,
@@ -66,23 +69,26 @@ Constructor behavior:
 
 - if `config_path` is omitted, the class starts from built-in defaults instead of reading the per-user CLI config automatically
 - if `config_path` is provided, the file is loaded with the same schema validation used by the CLI
+- if the config defines `printers`, pass `printer_name="..."` to select one named profile
 - explicit constructor arguments override values loaded from `config_path`
 - the constructor always forces `model="paperang_p2"`
-- if `transport` is omitted, the facade defaults to USB
+- if `transport` is omitted, the facade currently defaults to USB for backward compatibility; use `transport="ble"` for the validated P2 path
 
 Important defaults inherited from the current P2 implementation:
 
 - `printer_width=576` when omitted
-- `print_density=75`
+- `print_density=95`
+- `calibration.advance_mm_per_px=0.08472`, based on an approximately `61 mm` printed distance over `720 px`
+- built-in text defaults are scaled from the P1 `384 px` head to the P2 `576 px` head, so ordinary P2 text starts at `54 px` instead of the shared renderer's `36 px`; explicit `font_size=` values are still used as exact pixel sizes
 - `post_print_feed_mm=5.0`
 - BLE discovery names default to the current CLI list when BLE transport is selected
 
 ## Transport Selection
 
-`PaperangP2` supports two live transports:
+`PaperangP2` has one validated live transport and one experimental software transport:
 
-- `transport="usb"`: the default path. `address` is ignored and `discover()` reports the connected USB printer when the upstream backend can open it.
-- `transport="ble"`: uses the provided `address`, configured `macaddress`, or the BLE discovery path.
+- `transport="ble"`: validated on Windows for FF00/A5 devices advertising as `Paperang_P2`. It uses the provided `address`, configured `macaddress`, or the BLE discovery path. The driver first tries the upstream Nordic UART profile and then falls back to the `ff00` profile; `probe` reports `protocol=a5` when the FF00 device answers the `A5...5A` probe.
+- `transport="usb"`: experimental software path. `address` is ignored and `discover()` reports the connected USB printer when the upstream backend can open it.
 
 Config files can select the same behavior with `"model": "paperang_p2"` and optional `"transport": "usb"` or `"transport": "ble"`.
 
@@ -107,7 +113,7 @@ These properties reflect facade state only. They do not expose a long-lived USB 
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `discover()` | `list[PrinterDevice]` | USB presence check or BLE discovery, depending on transport |
+| `discover()` | `list[PrinterDevice]` | BLE discovery, or USB presence check when the experimental USB transport is selected |
 | `connect()` | `PaperangP2` | Non-printing readiness check that caches the resolved address |
 | `disconnect()` | `None` | Clears the facade cache only |
 | `get_status()` | `PrinterStatus` | Non-printing live status query; accepts optional `address=` |
@@ -138,22 +144,11 @@ Image-related cautions still apply in the library API:
 - `autofit=True` is mainly useful for rotated text and rotated paragraph jobs
 - `print_image()` and `print_compose()` remain experimental until you validate physical output on your hardware
 
-P2 support is live in software, but this repository still lacks hardware-validation evidence for P2 USB and BLE printing.
+P2 BLE FF00/A5 printing is physically validated on Windows. P2 USB remains experimental and is not the supported P2 path.
 
 ## Hardware Smoke Checklist
 
-Use this checklist only when you have a real P2 printer on hand. A successful pass validates one device on one host path; it does not upgrade the repository-wide support claim beyond the current "implemented in software, hardware validation still pending" status.
-
-USB smoke path:
-
-1. Confirm your active config selects `"model": "paperang_p2"` and either omits `transport` or sets `"transport": "usb"`.
-2. Run `paperang --json config show` and confirm the resolved model and transport.
-3. Run `paperang --json probe`.
-4. Run `paperang --json battery`.
-5. Run `paperang --json print text "P2 USB smoke" --dry-run`.
-6. Only if that dry-run looks correct, repeat the same job once with `--allow-paper-use`.
-
-BLE smoke path:
+Use this checklist only when you have a real P2 printer on hand. A successful BLE FF00/A5 pass validates one device on one Windows host path; it does not validate USB, macOS, or Linux behavior.
 
 1. Set `"model": "paperang_p2"`, `"transport": "ble"`, and the target BLE address in config, or create the facade as `PaperangP2(transport="ble", address="04:7F:0E:3A:4F:31")`.
 2. Run `paperang --json discover` if you still need to confirm the BLE address.
@@ -162,7 +157,11 @@ BLE smoke path:
 5. Run `paperang --json print text "P2 BLE smoke" --dry-run`.
 6. Only if that dry-run looks correct, repeat the same job once with `--allow-paper-use`.
 
-If you are validating the Python facade instead of the CLI, keep the same order: start with `PaperangP2(transport="usb")` or `PaperangP2(transport="ble", address="...")`, call a non-printing method such as `get_status()` or `get_battery()` first, then run one matching `dry_run=True` preview before any real print.
+If `probe` reports `hardware_info` containing `BLE profile ff00` and `protocol=a5`, the device has been found and connected through the validated A5 packet family. Real printing through that BLE profile uses RawBT-style `05 1B` raster chunks.
+
+If you are validating the Python facade instead of the CLI, keep the same order: start with `PaperangP2(transport="ble", address="...")`, call a non-printing method such as `get_status()` or `get_battery()` first, then run one matching `dry_run=True` preview before any real print.
+
+For USB research, use `transport="usb"` explicitly and treat any result as experimental until you validate the backend and hardware behavior on that host.
 
 ## Styling Defaults And Result Metadata
 
@@ -183,7 +182,7 @@ When a dry-run returns `estimated_length_mm`, `max_length_mm`, or `fits_length_l
 Conceptual overlap:
 
 - the same P2 model
-- USB and BLE transport selection
+- supported BLE transport plus an experimental USB software path
 - status, battery, and Bluetooth MAC queries
 - text and image printing routed to a live P2 backend
 
@@ -193,7 +192,7 @@ Intentional differences in this project:
 - upstream extras such as QR printing, pickup-code printing, and profile-specific commands are not part of this public facade yet
 - `print_paragraph()` and `print_compose()` are convenience methods specific to this package
 - rotated compose printing is not implemented yet
-- physical P2 USB and BLE validation is still pending in this repository
+- P2 BLE FF00/A5 is physically validated on Windows; P2 USB remains experimental and is not the supported P2 path
 
 ## CLI Inspection
 

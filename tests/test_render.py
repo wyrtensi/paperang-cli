@@ -10,6 +10,7 @@ from paperang_cli.protocol import image_data
 from paperang_cli.render import (
     RenderStyling,
     RenderedBitstream,
+    _render_text_canvas,
     feed_units_from_mm,
     render_compose_job,
     render_composed_bitstream,
@@ -31,6 +32,18 @@ def test_render_text_bitstream_returns_bytes():
     assert isinstance(payload, bytes)
     assert len(payload) > 0
     assert (len(payload) * 8) % 384 == 0
+
+
+def test_binary_text_canvas_contains_only_black_and_white_pixels():
+    canvas = _render_text_canvas(
+        "P2 crisp text",
+        printer_width=576,
+        font_size=32,
+        paragraph=False,
+        binary_text=True,
+    )
+
+    assert set(np.unique(np.array(canvas))).issubset({0, 255})
 
 
 def test_render_text_bitstream_forwards_font_fit(monkeypatch):
