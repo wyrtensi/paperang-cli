@@ -1,6 +1,6 @@
 {
   "name": "paperang-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "npm wrapper for the paperang-cli Python package",
   "license": "MIT",
   "author": "wyrtensi",
@@ -44,7 +44,7 @@
     "access": "public"
   },
   "paperangCli": {
-    "pythonPackageVersion": "0.2.0",
+    "pythonPackageVersion": "0.2.1",
     "pythonMinimumVersion": "3.10"
   }
 }

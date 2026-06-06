@@ -152,11 +152,11 @@ When a user asks for help choosing styling, reason from how the result should lo
 Default agent behavior for style selection:
 
 1. Determine the human-visible task type.
-2. Prefer the nearest built-in scenario or shipped example as a base.
+2. Choose the nearest built-in scenario or shipped example as the default base when one fits.
 3. If the base is close but not exact, add a temporary per-invocation `--style-json` override.
 4. If no scenario fits, build a temporary `style-json` from the existing public controls.
 
-Use temporary task-scoped styling by default. Only update persistent `print_defaults` when the user explicitly asks to make that behavior the default for future jobs.
+Scenarios are reusable bases, not absolute modes; use temporary task-scoped styling by default. Only update persistent `print_defaults` when the user explicitly asks to make that behavior the default for future jobs.
 
 Keep `break_long_words` at `false` unless the user explicitly asks for character-level splitting. If a long token must fit and the user did not request splitting, prefer preserving whole words and using `font_fit="largest-fitting"` when that better matches the user's intent.
 

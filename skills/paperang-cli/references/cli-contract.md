@@ -103,11 +103,11 @@ Configs may define a `printers` map plus `default_printer`. When `printers` is p
 
 The active config may now contain a nested `print_defaults` object for supported-model styling defaults. CLI flags override those defaults for one invocation.
 
-For agent-driven styling, built-in scenarios and shipped examples should be treated as reusable starting points, not as a whitelist and not as a hidden alternate render mode.
+For agent-driven styling, built-in scenarios and shipped examples are the default starting point when one fits. Treat them as reusable bases with optional temporary overrides, not as a whitelist and not as absolute modes.
 
 Recommended default policy for agents:
 
-- prefer the nearest scenario or example as a base
+- choose the nearest scenario or example as the default base when one fits the human-visible task
 - if that base is close but not exact, add temporary per-invocation `--style-json` overrides
 - if no scenario fits, build a temporary `--style-json` payload from the existing public controls
 - leave persistent `print_defaults` unchanged unless the user explicitly asks to make the behavior the default for future jobs

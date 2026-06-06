@@ -562,9 +562,13 @@ class PaperangP2Driver(PrinterDriver):
         try:
             printer.set_paper_type(0)
             printer.set_heat_density(int(self.settings.print_density))
-            printer.print_bitmap(bitstream, width_bytes=max(1, self.settings.printerwidth // 8))
-            if feed_units > 0:
-                printer.feed(feed_units)
+            width_bytes = max(1, self.settings.printerwidth // 8)
+            if hasattr(printer, "print_bitmap_with_feed"):
+                printer.print_bitmap_with_feed(bitstream, width_bytes=width_bytes, feed_mm=feed_mm)
+            else:
+                printer.print_bitmap(bitstream, width_bytes=width_bytes)
+                if feed_units > 0:
+                    printer.feed(feed_units)
             battery_after = printer.get_battery()
             return PrintResult(
                 model=self.model_id,

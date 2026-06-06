@@ -6,6 +6,7 @@ from click.testing import CliRunner
 from PIL import Image
 
 from paperang_cli.cli import cli
+from paperang_cli import config as config_module
 from paperang_cli.drivers import registry
 from paperang_cli.models import BluetoothMacStatus, PrinterStatus
 
@@ -473,8 +474,10 @@ def test_self_test_dry_run_json(monkeypatch, fake_driver):
     assert '"warning":' in result.output
 
 
-def test_config_show_json():
+def test_config_show_json(monkeypatch, tmp_path):
     runner = CliRunner()
+    monkeypatch.delenv("PAPERANG_CLI_CONFIG", raising=False)
+    monkeypatch.setattr(config_module, "default_config_path", lambda: tmp_path / "paperang-cli.config.json")
 
     result = runner.invoke(cli, ["--json", "config", "show"])
 

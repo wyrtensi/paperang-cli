@@ -20,6 +20,10 @@ MODEL_DEFAULT_PRINT_DENSITIES = {
     "paperang_p1": 75,
     "paperang_p2": 95,
 }
+MODEL_DEFAULT_POST_PRINT_FEEDS = {
+    "paperang_p1": 5.0,
+    "paperang_p2": 12.0,
+}
 MODEL_DEFAULT_CALIBRATIONS = {
     "paperang_p1": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.1217},
     "paperang_p2": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.08472},
@@ -344,7 +348,7 @@ def _select_printer_mapping(
 
     shared = {
         key: data[key]
-        for key in ("discovery_names", "print_defaults", "presets")
+        for key in ("post_print_feed_mm", "discovery_names", "print_defaults", "presets")
         if key in data
     }
     selected = {**shared, **printers[active_printer]}
@@ -400,6 +404,7 @@ class PaperangCliConfig:
         model = str(data.get("model", defaults.model))
         default_printer_width = MODEL_DEFAULT_PRINTER_WIDTHS.get(model, defaults.printerwidth)
         default_print_density = MODEL_DEFAULT_PRINT_DENSITIES.get(model, defaults.print_density)
+        default_post_print_feed_mm = MODEL_DEFAULT_POST_PRINT_FEEDS.get(model, defaults.post_print_feed_mm)
         default_calibration = CalibrationSettings.from_mapping(MODEL_DEFAULT_CALIBRATIONS.get(model))
         config = cls(
             active_printer=active_printer,
@@ -410,7 +415,7 @@ class PaperangCliConfig:
             macaddress=str(data.get("macaddress", defaults.macaddress)),
             printerwidth=int(data.get("printerwidth", default_printer_width)),
             print_density=int(data.get("print_density", default_print_density)),
-            post_print_feed_mm=float(data.get("post_print_feed_mm", defaults.post_print_feed_mm)),
+            post_print_feed_mm=float(data.get("post_print_feed_mm", default_post_print_feed_mm)),
             discovery_names=list(data.get("discovery_names", DEFAULT_DISCOVERY_NAMES)),
             calibration=CalibrationSettings.from_mapping(
                 _optional_mapping(data.get("calibration"), "calibration"),

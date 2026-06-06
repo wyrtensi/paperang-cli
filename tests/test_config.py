@@ -128,6 +128,47 @@ def test_load_config_selects_default_printer_profile(tmp_path):
     assert settings.print_density == 95
 
 
+def test_load_config_p2_profile_uses_model_defaults_and_default_feed(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p2-desk",
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                        "transport": "ble",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.active_printer == "p2-desk"
+    assert settings.model == "paperang_p2"
+    assert settings.transport == "ble"
+    assert settings.printerwidth == 576
+    assert settings.print_density == 95
+    assert settings.post_print_feed_mm == 12.0
+    assert settings.calibration.advance_mm_per_px == pytest.approx(0.08472)
+
+
+def test_load_config_p2_single_model_uses_larger_default_feed(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(json.dumps({"model": "paperang_p2", "transport": "ble"}), encoding="utf-8")
+
+    settings, _, _ = config_module.load_config(config_path)
+
+    assert settings.post_print_feed_mm == 12.0
+
+
 def test_load_config_selects_requested_printer_profile(tmp_path):
     config_path = tmp_path / "paperang-cli.config.json"
     config_path.write_text(
@@ -157,6 +198,61 @@ def test_load_config_selects_requested_printer_profile(tmp_path):
     assert settings.active_printer == "p2-desk"
     assert settings.model == "paperang_p2"
     assert settings.discovery_names == ["Paperang", "Paperang_P2"]
+
+
+def test_load_config_shares_post_print_feed_with_printer_profiles(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p1-kitchen",
+                "post_print_feed_mm": 8.0,
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    p1_settings, _, _ = config_module.load_config(config_path, printer_name="p1-kitchen")
+    p2_settings, _, _ = config_module.load_config(config_path, printer_name="p2-desk")
+
+    assert p1_settings.post_print_feed_mm == 8.0
+    assert p2_settings.post_print_feed_mm == 8.0
+
+
+def test_load_config_printer_profile_can_override_shared_post_print_feed(tmp_path):
+    config_path = tmp_path / "paperang-cli.config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_printer": "p1-kitchen",
+                "post_print_feed_mm": 8.0,
+                "printers": {
+                    "p1-kitchen": {
+                        "model": "paperang_p1",
+                    },
+                    "p2-desk": {
+                        "model": "paperang_p2",
+                        "transport": "ble",
+                        "post_print_feed_mm": 6.0,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings, _, _ = config_module.load_config(config_path, printer_name="p2-desk")
+
+    assert settings.post_print_feed_mm == 6.0
 
 
 def test_load_config_rejects_unknown_printer_profile(tmp_path):

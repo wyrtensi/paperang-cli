@@ -1,6 +1,8 @@
 from paperang_cli.protocol.p2_ble_ff00 import (
     A5_START_RASTER_PAYLOAD,
     A5_MAX_FRAME_SIZE,
+    PaperangP2Ff00,
+    a5_feed_rows_from_mm,
     a5_feed_rows_from_units,
     a5_print_chunk_size,
     build_a5_finish_payload,
@@ -62,7 +64,50 @@ def test_p2_print_chunk_frame_fits_ble_write_limit():
 
 def test_feed_rows_from_cli_units_uses_approximate_p2_dot_pitch():
     assert a5_feed_rows_from_units(0) == 0
-    assert a5_feed_rows_from_units(280) == 40
+    assert a5_feed_rows_from_units(280) == 59
+
+
+def test_feed_rows_from_mm_uses_p2_dot_pitch():
+    assert a5_feed_rows_from_mm(0) == 0
+    assert a5_feed_rows_from_mm(5.0) == 59
+
+
+def test_ff00_feed_prints_blank_millimeters_as_raster_rows():
+    captured: dict[str, object] = {}
+    printer = PaperangP2Ff00()
+    printer._last_width_bytes = 72
+
+    async def fake_print_bitmap(bitmap_data: bytes, *, width_bytes: int) -> None:
+        captured["bitmap_data"] = bitmap_data
+        captured["width_bytes"] = width_bytes
+
+    printer._print_bitmap = fake_print_bitmap
+
+    printer.feed(5.0)
+
+    assert captured["width_bytes"] == 72
+    assert captured["bitmap_data"] == bytes(59 * 72)
+
+
+def test_ff00_print_bitmap_with_feed_uses_mm_feed_path():
+    calls: list[tuple[str, object]] = []
+    printer = PaperangP2Ff00()
+
+    def fake_print_bitmap(bitmap_data: bytes, *, width_bytes: int) -> None:
+        calls.append(("print_bitmap", (bitmap_data, width_bytes)))
+
+    def fake_feed(feed_mm: float) -> None:
+        calls.append(("feed", feed_mm))
+
+    printer.print_bitmap = fake_print_bitmap
+    printer.feed = fake_feed
+
+    printer.print_bitmap_with_feed(bytes([0xFF]) * 72, width_bytes=72, feed_mm=5.0)
+
+    assert calls == [
+        ("print_bitmap", (bytes([0xFF]) * 72, 72)),
+        ("feed", 5.0),
+    ]
 
 
 def test_parse_a5_payload_extracts_inner_command_fields():

@@ -50,6 +50,8 @@ For `print image`, prefer:
 - `--mode photo` for photographs and smoother grayscale content
 - `--conversion` only when deliberately tuning a low-level conversion path
 
+For agent-driven styling, choose the nearest built-in scenario or shipped skill example as the default base when one fits the human-visible task. Scenarios are reusable bases, not absolute modes; use per-invocation `--style-json` overrides when the base is close but not exact.
+
 ## Config Resolution
 
 Configuration is resolved in this order:

@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2.0",
-  "package_version": "0.2.0",
+  "package_version": "0.2.1",
   "project": "paperang-cli",
   "canonical_human_contract": "docs/agents/cli-contract.md",
   "contract_scope": "Documented agent-facing behavior for the matching package version. Do not infer future compatibility guarantees.",
@@ -73,8 +73,9 @@
   },
   "agent_style_selection_policy": {
     "scenarios_are_starting_points": true,
+    "nearest_scenario_is_default_when_it_fits": true,
     "selection_order": [
-      "nearest built-in scenario or shipped example",
+      "nearest built-in scenario or shipped example as the default base when it fits the human-visible task",
       "temporary per-invocation style-json override of that base",
       "temporary style-json built from existing public controls"
     ],

@@ -136,7 +136,7 @@ paperang --json --printer p2-main print text "P2 note" --dry-run
 
 If `--printer` is omitted, `default_printer` is used. If `default_printer` is omitted, the first profile in the JSON object is used.
 
-Top-level `discovery_names`, `print_defaults`, and `presets` are shared by profiles unless a profile overrides them. Model-specific physical defaults such as width, density, and calibration are resolved from each selected profile's `model`, so a P2 profile does not inherit P1 width or paper-advance calibration by accident.
+Top-level `post_print_feed_mm`, `discovery_names`, `print_defaults`, and `presets` are shared by profiles unless a profile overrides them. Model-specific physical defaults such as width, density, and calibration are resolved from each selected profile's `model`, so a P2 profile does not inherit P1 width or paper-advance calibration by accident.
 
 The older single-printer fields (`model`, `transport`, `macaddress`, and the rest) remain supported when `printers` is absent.
 
@@ -172,7 +172,12 @@ Model-specific default values are:
 
 Desired post-print paper exit in millimeters.
 
-Internally, Paperang P1 currently maps this into calibrated printer feed command units.
+Model-specific built-in defaults are:
+
+- `paperang_p1`: `5.0 mm`
+- `paperang_p2`: `12.0 mm`
+
+Internally, Paperang P1 currently maps this into calibrated printer feed command units. Paperang P2 BLE FF00/A5 maps this to a blank raster feed in millimeters, because the validated FF00 path does not expose a separate confirmed feed command yet.
 
 ### `calibration`
 
@@ -228,6 +233,8 @@ Optional named scenario presets. These are merged with built-in presets and can 
 
 Rotated compose rendering and compose autofit are not implemented in the current release, so the config schema does not expose those fields yet.
 
+Agent-driven print requests should use the nearest built-in scenario or shipped example as the default starting point when one fits, then apply small per-invocation `--style-json` overrides as needed. Scenarios are reusable bases, not absolute modes.
+
 ## Precedence Rules
 
 The effective styling for one print job resolves in this order:
@@ -269,7 +276,7 @@ The default Paperang P1 profile currently reflects the proven working behavior f
 - ordinary text and paragraph orientation `normal`
 - ordinary image mode `sticker`
 
-For `paperang_p2`, the runtime switches the default render width to `576`, uses density `95`, uses `advance_mm_per_px=0.08472`, scales built-in text font and padding defaults from the P1 `384 px` head to the P2 `576 px` head, keeps the same feed default, and resolves transport to `usb` unless you explicitly choose BLE. Use BLE for the supported P2 path; the default USB path remains for backward-compatible experimentation.
+For `paperang_p2`, the runtime switches the default render width to `576`, uses density `95`, uses `advance_mm_per_px=0.08472`, scales built-in text font and padding defaults from the P1 `384 px` head to the P2 `576 px` head, uses a larger `12.0 mm` post-print feed by default, and resolves transport to `usb` unless you explicitly choose BLE. Use BLE for the supported P2 path; the default USB path remains for backward-compatible experimentation.
 
 ## Font Families And Rotation
 

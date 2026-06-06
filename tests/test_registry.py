@@ -171,6 +171,48 @@ def test_p2_text_render_scales_default_font_and_padding_for_576_dot_head(monkeyp
     assert captured["vertical_padding_px"] == 18
 
 
+def test_p2_ff00_bitmap_job_passes_feed_in_millimeters(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class FakeFf00Printer:
+        def connect(self):
+            return True
+
+        def disconnect(self):
+            captured["disconnect"] = True
+
+        def set_paper_type(self, value):
+            captured["paper_type"] = value
+
+        def set_heat_density(self, value):
+            captured["heat_density"] = value
+
+        def print_bitmap_with_feed(self, bitmap_data, *, width_bytes, feed_mm):
+            captured["bitmap_data"] = bitmap_data
+            captured["width_bytes"] = width_bytes
+            captured["feed_mm"] = feed_mm
+
+        def get_battery(self):
+            return 77
+
+    driver = PaperangP2Driver(PaperangCliConfig.from_mapping({"model": "paperang_p2", "transport": "ble"}))
+    monkeypatch.setattr(driver, "_build_printer", lambda address: FakeFf00Printer())
+    monkeypatch.setattr(paperang_p2, "_ensure_current_event_loop", lambda: None)
+
+    result = driver._send_bitmap_job(
+        bitstream=b"\xFF" * 72,
+        operation="text",
+        feed_mm=5.0,
+        dry_run=False,
+        address="01:54:8D:17:B3:F2",
+    )
+
+    assert captured["width_bytes"] == 72
+    assert captured["feed_mm"] == 5.0
+    assert result.feed_units == 280
+    assert result.battery_after == 77
+
+
 def test_p2_dry_run_print_operations_and_sideways_rendering(tmp_path):
     driver = PaperangP2Driver(PaperangCliConfig.from_mapping({"model": "paperang_p2", "transport": "ble"}))
     image_path = tmp_path / "p2-wide-source.png"

@@ -33,6 +33,8 @@ A5_STATUS_PAYLOAD = bytes([0x05, 0x0F, 0x01, 0x00, 0x00, 0x00])
 A5_MAX_FRAME_SIZE = 237
 A5_PRINT_DATA_FRAME_OVERHEAD = 26
 A5_RASTER_WRITE_PAUSE_SECONDS = 0.01
+A5_CLI_FEED_UNITS_PER_MM = 56
+A5_P2_ADVANCE_MM_PER_ROW = 0.08472
 
 
 class PaperangP2Ff00:
@@ -132,8 +134,20 @@ class PaperangP2Ff00:
         self._last_width_bytes = width_bytes
         self._run_async(self._print_bitmap(bitmap_data, width_bytes=width_bytes))
 
-    def feed(self, feed_units: int) -> None:
-        rows = a5_feed_rows_from_units(feed_units)
+    def print_bitmap_with_feed(self, bitmap_data: bytes, *, width_bytes: int = 72, feed_mm: float = 0.0) -> None:
+        if width_bytes <= 0:
+            raise DriverError("Paperang P2 FF00/A5 width_bytes must be greater than zero")
+        if len(bitmap_data) % width_bytes != 0:
+            raise DriverError("Paperang P2 FF00/A5 bitmap length must be a whole number of rows")
+        if not bitmap_data:
+            return
+
+        self.print_bitmap(bitmap_data, width_bytes=width_bytes)
+        self.feed(feed_mm)
+
+
+    def feed(self, feed_mm: float) -> None:
+        rows = a5_feed_rows_from_mm(feed_mm)
         if rows <= 0:
             return
         self._run_async(self._print_bitmap(bytes(rows * self._last_width_bytes), width_bytes=self._last_width_bytes))
@@ -362,7 +376,15 @@ def a5_print_chunk_size(width_bytes: int) -> int:
 def a5_feed_rows_from_units(feed_units: int) -> int:
     """Convert calibrated CLI feed units into approximate P2 raster feed rows."""
 
-    return max(0, int(round(feed_units / 7)))
+    feed_mm = max(0, feed_units) / A5_CLI_FEED_UNITS_PER_MM
+    return a5_feed_rows_from_mm(feed_mm)
+
+
+def a5_feed_rows_from_mm(feed_mm: float) -> int:
+    """Convert millimeters into approximate blank P2 raster feed rows."""
+
+    feed_mm = max(0.0, float(feed_mm))
+    return max(0, int(round(feed_mm / A5_P2_ADVANCE_MM_PER_ROW)))
 
 
 def build_a5_finish_payload() -> bytes:

@@ -80,7 +80,7 @@ Important defaults inherited from the current P2 implementation:
 - `print_density=95`
 - `calibration.advance_mm_per_px=0.08472`, based on an approximately `61 mm` printed distance over `720 px`
 - built-in text defaults are scaled from the P1 `384 px` head to the P2 `576 px` head, so ordinary P2 text starts at `54 px` instead of the shared renderer's `36 px`; explicit `font_size=` values are still used as exact pixel sizes
-- `post_print_feed_mm=5.0`
+- `post_print_feed_mm=12.0`
 - BLE discovery names default to the current CLI list when BLE transport is selected
 
 ## Transport Selection
