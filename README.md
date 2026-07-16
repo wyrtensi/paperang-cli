@@ -19,9 +19,10 @@ The current release ships two supported models with different validation levels:
 
 | Printer | Transport | Status |
 | --- | --- | --- |
-| Paperang P1 | Bluetooth Low Energy (BLE) | Supported |
+| Paperang P1 | Bluetooth Low Energy (BLE) | Supported and physically validated on Windows |
+| Paperang P1 | USB | Experimental software path; not physically validated by dev |
 | Paperang P2 | Bluetooth Low Energy (BLE, FF00/A5) | Supported and physically validated on Windows |
-| Paperang P2 | USB | Experimental software path; not physically validated in this repo yet |
+| Paperang P2 | USB | Experimental software path; not physically validated by dev |
 
 Local, cable, and USB data transports are not supported for Paperang P1 in this package.
 
