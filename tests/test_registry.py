@@ -286,4 +286,4 @@ def test_get_driver_rejects_unknown_model():
 
 
 def test_supported_models_contains_p1_and_p2():
-    assert supported_models() == ["paperang_p1", "paperang_p2"]
+    assert supported_models() == ["paperang_c1", "paperang_p1", "paperang_p2"]

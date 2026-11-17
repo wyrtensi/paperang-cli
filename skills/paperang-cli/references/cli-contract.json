@@ -58,6 +58,24 @@
         "macos"
       ],
       "notes": "For paperang_p2, the supported and physically validated live path is BLE through the FF00/A5 profile on Windows. USB remains an experimental software path and is not a supported validated live path in this repository yet. Linux and macOS CI checks do not prove live hardware compatibility."
+    },
+    {
+      "id": "paperang_c1",
+      "status": "experimental",
+      "transport": "ble",
+      "supported_live_transports": [
+        "ble"
+      ],
+      "unsupported_live_transports": [
+        "usb",
+        "local",
+        "cable"
+      ],
+      "hardware_tested_platforms": [],
+      "compatibility_checks_without_hardware_validation": [
+        "macos"
+      ],
+      "notes": "Standalone C1 transport validated on macOS, firmware 1.00.09; integrated driver offline-tested only. Windows/Linux hardware untested. No self-test, density changes or firmware writes. No model-specific public Python facade."
     }
   ],
   "config_resolution": [
