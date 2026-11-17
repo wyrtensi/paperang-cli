@@ -15,16 +15,20 @@ DEFAULT_DISCOVERY_NAMES = ["MiaoMiaoJi", "Paperang", "Paperang_P2", "Paperang_P2
 MODEL_DEFAULT_PRINTER_WIDTHS = {
     "paperang_p1": 384,
     "paperang_p2": 576,
+    "paperang_c1": 1248,
 }
 MODEL_DEFAULT_PRINT_DENSITIES = {
     "paperang_p1": 75,
     "paperang_p2": 95,
+    "paperang_c1": 95,
 }
 MODEL_DEFAULT_POST_PRINT_FEEDS = {
     "paperang_p1": 5.0,
     "paperang_p2": 12.0,
+    "paperang_c1": 15.0,
 }
 MODEL_DEFAULT_CALIBRATIONS = {
+    "paperang_c1": {"printable_width_mm": 104.0, "advance_mm_per_px": 1 / 12},
     "paperang_p1": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.1217},
     "paperang_p2": {"printable_width_mm": 44.0, "advance_mm_per_px": 0.08472},
 }
@@ -416,7 +420,7 @@ class PaperangCliConfig:
             printerwidth=int(data.get("printerwidth", default_printer_width)),
             print_density=int(data.get("print_density", default_print_density)),
             post_print_feed_mm=float(data.get("post_print_feed_mm", default_post_print_feed_mm)),
-            discovery_names=list(data.get("discovery_names", DEFAULT_DISCOVERY_NAMES)),
+            discovery_names=list(data.get("discovery_names", ["Paperang_C1"] if model == "paperang_c1" else DEFAULT_DISCOVERY_NAMES)),
             calibration=CalibrationSettings.from_mapping(
                 _optional_mapping(data.get("calibration"), "calibration"),
                 defaults=default_calibration,
@@ -428,6 +432,11 @@ class PaperangCliConfig:
         return config
 
     def validate(self) -> None:
+        if self.model == "paperang_c1":
+            if self.transport not in (None, "ble") or self.printerwidth != 1248:
+                raise ConfigError("C1 requires BLE and a 1248-dot print head")
+            if self.print_density != 95:
+                raise ConfigError("C1 density changes are not supported; omit print_density")
         if self.transport is not None and self.transport not in VALID_TRANSPORTS:
             raise ConfigError(f"transport must be one of: {', '.join(sorted(VALID_TRANSPORTS))}")
         if self.model == "paperang_p1" and self.transport == "usb":

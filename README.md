@@ -545,3 +545,25 @@ The current `paperang-cli` package is maintained by `wyrtensi`.
 ## License
 
 This package is available under the [MIT License](LICENSE).
+
+## Paperang C1 (experimental BLE integration)
+
+Select `model: paperang_c1` in JSON configuration. The C1 driver supports discovery,
+status/battery/MAC queries and text, paragraph, image and compose printing through
+existing commands. Set `macaddress` or `--address` to the identifier returned by
+`discover` (a CoreBluetooth UUID on macOS), or the 12-hex-digit QR device ID.
+With no address, exactly one advertised C1 must be found; ambiguous scans fail.
+
+The standalone transport was physically validated on macOS 26.6.2 with Python
+3.13, Bleak 3.1.0 and C1 firmware 1.00.09. The integration in this repository has
+only offline validation. Windows/Linux hardware is untested. This is not a
+macOS CUPS/AirPrint driver. USB, built-in self-test (including its dry-run),
+density changes and firmware writes are unsupported. `print_density=95` is a
+compatibility placeholder: it does not change the device's current density.
+
+Rendering width is fixed at 1248 dots. Jobs are limited to 3600 rows; nominal
+feed is 12 rows/mm, limited to 50 mm. The 104 mm printable width and 1/12 mm
+advance are nominal, not ruler-calibrated. Fast BLE transmission is the default;
+no job is automatically retried. Paper-use gates and offline dry-runs are retained.
+A model-specific public Python facade is not added in this change; the existing
+P1/P2 API catalog remains unchanged.
